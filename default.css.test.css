@@ -1,0 +1,26 @@
+*{
+  font-size:small;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Reset lists specifically */
+ul, ol {
+  list-style: none; /* Remove default bullets/numbers */
+  margin: 0;
+  padding: 0;
+}
+
+input, button, select, textarea {
+    all: unset;
+    display: inline-block;
+    font-family: inherit;
+    font-size: inherit;
+  }
+
+/*
+* {
+    all:unset;
+}
+*/
