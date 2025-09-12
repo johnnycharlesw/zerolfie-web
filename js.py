@@ -130,3 +130,27 @@ def _legacy_demo_if_needed():
 # and only perform environment setup.
 # init()  # ensure initialized
 # _legacy_demo_if_needed()
+
+# If run as an entry point, run an REPL
+
+def repl():
+    """Run a simple JS REPL on stdin."""
+    print("JavaScript REPL (type 'exit' or Ctrl-D to quit)")
+    while True:
+        try:
+            line = input("js> ")
+            if line.strip().lower() in ("exit", "quit"):
+                break
+            if line.strip() == "":
+                continue
+            result = run_code(line)
+            if result is not None:
+                print(repr(result))
+        except (EOFError, KeyboardInterrupt):
+            print()
+            break
+        except Exception as e:
+            print(f"Error: {e}")
+
+if __name__ == "__main__":
+    repl()

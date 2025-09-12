@@ -1,0 +1,30 @@
+// src/parser/expr.lalrpop
+// Tell lalrpop the tokens come from your enum type
+extern crate crate;
+
+use crate::token::Token;
+
+Expr: i64 = {
+    <l:Expr> "+" <r:Term> => l + r,
+    <l:Expr> "-" <r:Term> => l - r,
+    Term,
+};
+
+Term: i64 = {
+    <l:Term> "*" <r:Factor> => l * r,
+    <l:Term> "/" <r:Factor> => l / r,
+    Factor,
+};
+
+Factor: i64 = {
+    Number,
+    "(" <e:Expr> ")" => e,
+};
+
+Number: i64 = {
+    <n:Token> if matches!(n, Token::Number) => {
+        // Extract string from Token variant to parse
+        // You'll implement this in the tokenizer wrapper
+        parse_number(n)
+    },
+};
