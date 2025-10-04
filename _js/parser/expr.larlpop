@@ -28,3 +28,21 @@ Number: i64 = {
         parse_number(n)
     },
 };
+
+VariableDefinition: VariableDefinition = {
+    <var_def:Token> <id:Token> <eq:Token> <expr:Expr> <semi:Token> if matches!(var_def, Token::VariableDefinitionNonStatic) && matches!(id, Token::Identifier) && matches!(eq, Token::Equal) && matches!(semi, Token::Semicolon) => {
+        VariableDefinition {
+            name: extract_identifier(id),
+            kind: VariableDefinitionKind::NonStatic,
+            value: Some(expr),
+        }
+    },
+    <var_def:Token> <id:Token> <eq:Token> <expr:Expr> <semi:Token> if matches!(var_def, Token::VariableDefinitionStatic) && matches!(id, Token::Identifier) && matches!(eq, Token::Equal) && matches!(semi, Token::Semicolon) => {
+        VariableDefinition {
+            name: extract_identifier(id),
+            kind: VariableDefinitionKind::Static,
+            value: Some(expr),
+        }
+    }
+};
+
