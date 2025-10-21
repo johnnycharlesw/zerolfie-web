@@ -19,7 +19,7 @@ def dns_lookup(domain):
         for rdata in answers:
             return {
                 "domain":domain,
-                "ip":rdata
+                "ip":str(rdata)
             }
     except resolv.NoAnswer:
         print(f"No answer for {domain}")

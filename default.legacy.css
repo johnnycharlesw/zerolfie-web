@@ -1,3 +1,12 @@
+/* 
+THis stylesheet is only still existent for compatibility.
+Yes, you heard that right.
+THis stylesheet used to just be baked into every browser.
+However, it eventually got some variants in CSS, including this one, that are still used today.
+DO NOT EDIT PAST COMPLETION, IT IS MEANT TO LOOK DATED!
+*/
+
+
 checkbox, radio {
     background-color: rgb(151,151,151);
 }

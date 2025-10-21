@@ -153,4 +153,22 @@ def repl():
             print(f"Error: {e}")
 
 if __name__ == "__main__":
-    repl()
+    if sys.argv[1] == "repl":
+        repl()
+    elif sys.argv[1] == "demo":
+        demo()
+    elif sys.argv[1] == "file":
+        run_file(sys.argv[2])
+    elif sys.argv[1] == "code":
+        run_code(sys.argv[2])
+    elif sys.argv[1] == "define":
+        define(sys.argv[2], sys.argv[3])
+    elif sys.argv[1] == "call":
+        call(sys.argv[2], *sys.argv[3:])
+    elif sys.argv[1] == "init":
+        init(sys.argv[2])
+    elif sys.argv[1] == "set_global":
+        set_global(sys.argv[2], sys.argv[3])
+    else:
+        print("Invalid argument")
+    

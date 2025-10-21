@@ -1,4 +1,5 @@
-import js
-import ui
-import css
-js.init()
+import webview
+import sys
+
+if sys.argv[1] == "launch-webview-standalone":
+    webview.main()
