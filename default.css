@@ -1,139 +1,380 @@
-@import 'unicode-bidi.css';
-
-a:link{
-    color:blue;
-    text-decoration:underline;
+/*
+  UA stylesheet: Unicode Bidi Isolation
+  - Isolate text in common inline and interactive elements to prevent bidi context bleed
+  - Provide stronger control for bdo and dir attributes
+*/
+/* Base isolation for common inline/phrasing and controls */
+span,
+a,
+em,
+strong,
+small,
+sub,
+sup,
+code,
+kbd,
+samp,
+var,
+abbr,
+time,
+mark,
+ruby,
+rt,
+rp,
+bdi,
+label,
+input,
+select,
+textarea,
+button,
+figcaption,
+caption,
+td,
+th {
+  unicode-bidi: isolate;
 }
 
-a:link:hover{
-  color:rgb(0, 72, 255);
+/* Explicit bidi override element */
+bdo[dir=ltr] {
+  direction: ltr;
+  unicode-bidi: isolate-override;
 }
 
-a:visited{
-  color:purple;
+bdo[dir=rtl] {
+  direction: rtl;
+  unicode-bidi: isolate-override;
 }
 
-a:visited:hover{
-  color:rgb(145, 0, 145);
+/* Attribute-driven direction on generic elements */
+/* Elements explicitly marked with dir should establish their own bidi context */
+[dir=ltr] {
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 
-body {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    color:black;
-    background:white;
-    margin:0;
-    padding:0;
-    display:block;
-    
+[dir=rtl] {
+  direction: rtl;
+  unicode-bidi: isolate;
 }
 
-h1,h2,h3,h4,h5,h6{
-  font-weight:bold;
-  display:block;
+/* Tables can contain mixed-direction content in cells; ensure isolation at cell level (covered above) */
+/* Lists and list items often contain inline content; isolate them too to be safe without changing layout semantics */
+ul, ol, li {
+  unicode-bidi: isolate;
 }
 
+/* Pre/code blocks and block-level typographic elements with possible inline content */
+pre, code, samp, kbd { /* code also listed above; repetition is harmless for clarity */
+  unicode-bidi: isolate;
+}
+
+/* Forms can have nested inline labels and values; ensure wrappers also isolate */
+form, fieldset, legend {
+  unicode-bidi: isolate;
+}
+
+a:link {
+  text-decoration: underline;
+}
+
+@media (prefers-color-scheme: light) {
+  a:link {
+    color: blue;
+  }
+  a:link:hover {
+    color: rgb(0, 72, 255);
+  }
+  a:visited {
+    color: purple;
+  }
+  a:visited:hover {
+    color: rgb(145, 0, 145);
+  }
+}
+@media (prefers-color-scheme: dark) {
+  a:link {
+    color: rgb(43, 101, 247);
+  }
+  a:link:hover {
+    color: rgb(51, 107, 248);
+  }
+  a:visited {
+    color: violet;
+  }
+  a:visited:hover {
+    color: rgb(255, 138, 255);
+  }
+}
 h1 {
   font-size: 2em;
   margin: 0.67em 0;
+  font-weight: bold;
+  display: block;
 }
-  
+
 h2 {
   font-size: 1.5em;
   margin: 0.75em 0;
+  font-weight: bold;
+  display: block;
 }
-  
+
 h3 {
   font-size: 1.17em;
   margin: 0.83em 0;
+  font-weight: bold;
+  display: block;
 }
 
 h4 {
   font-size: 1em;
   margin: 1.12em 0;
+  font-weight: bold;
+  display: block;
 }
 
 h5 {
   font-size: 0.83em;
   margin: 1.5em 0;
+  font-weight: bold;
+  display: block;
 }
-  
+
 h6 {
   font-size: 0.75em;
   margin: 1.67em 0;
+  font-weight: bold;
+  display: block;
 }
 
 body {
-    display: block;
-    margin: 8px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  margin: 8px;
+  padding: 0;
+  display: block;
 }
 
+head {
+  display: none;
+}
+
+script {
+  display: none;
+}
+
+@media (prefers-color-scheme: light) {
+  body {
+    color: black;
+    background: white;
+  }
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    color: white;
+    background: black;
+  }
+}
 button, input, textarea, select, progress, meter {
-  background-color: rgb(151,151,151);
+  background-color: rgb(151, 151, 151);
 }
 
-button, input, textarea, select, progress, meter, fieldset{
-  border-color:rgb(148, 148, 148);
-  border-style:solid;
+button {
+  border-color: rgb(148, 148, 148);
+  border-style: solid;
 }
 
-button,select,progress,meter,legend{
+input {
+  border-color: rgb(148, 148, 148);
+  border-style: solid;
+}
+
+textarea {
+  border-color: rgb(148, 148, 148);
+  border-style: solid;
+}
+
+select {
+  border-color: rgb(148, 148, 148);
+  border-style: solid;
+}
+
+progress {
+  border-color: rgb(148, 148, 148);
+  border-style: solid;
+}
+
+meter {
+  border-color: rgb(148, 148, 148);
+  border-style: solid;
+}
+
+fieldset {
+  border-color: rgb(148, 148, 148);
+  border-style: solid;
+}
+
+button {
   user-select: none;
 }
 
-button{
-  border-style: outset;
-}
-button:disabled{
-  cursor:not-allowed;
+select {
+  user-select: none;
 }
 
-code{
+progress {
+  user-select: none;
+}
+
+meter {
+  user-select: none;
+}
+
+legend {
+  user-select: none;
+}
+
+button {
+  border-style: outset;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+@media (prefers-color-scheme: light) {
+  button {
+    background-color: lightgray;
+  }
+}
+@media (prefers-color-scheme: dark) {
+  button {
+    background-color: rgb(27, 27, 27);
+  }
+}
+input[type=button] {
+  border-style: outset;
+}
+
+input[type=button]:disabled {
+  cursor: not-allowed;
+}
+
+@media (prefers-color-scheme: light) {
+  input[type=button] {
+    background-color: lightgray;
+  }
+}
+@media (prefers-color-scheme: dark) {
+  input[type=button] {
+    background-color: rgb(27, 27, 27);
+  }
+}
+input[type=submit] {
+  border-style: outset;
+}
+
+input[type=submit]:disabled {
+  cursor: not-allowed;
+}
+
+@media (prefers-color-scheme: light) {
+  input[type=submit] {
+    background-color: lightgray;
+  }
+}
+@media (prefers-color-scheme: dark) {
+  input[type=submit] {
+    background-color: rgb(27, 27, 27);
+  }
+}
+code {
   font-family: monospace;
 }
 
-code,p{
-  white-space:pre;
+code, p {
+  white-space: pre;
 }
 
-ul{
+fieldset {
+  width: 100%;
+}
+
+iframe {
+  border-style: inset;
+  border-width: 5px;
+}
+
+@media (prefers-color-scheme: light) {
+  iframe {
+    border-color: rgb(83, 83, 83);
+  }
+}
+@media (prefers-color-scheme: dark) {
+  iframe {
+    border-color: rgb(148, 148, 148);
+  }
+}
+frame {
+  border-style: inset;
+  border-width: 5px;
+}
+
+@media (prefers-color-scheme: light) {
+  frame {
+    border-color: rgb(83, 83, 83);
+  }
+}
+@media (prefers-color-scheme: dark) {
+  frame {
+    border-color: rgb(148, 148, 148);
+  }
+}
+ul {
   list-style-position: outside;
-  padding:10px;
-}
-ol{
-  list-style-position:outside;
-  padding:10px;
-}
-
-ol{
-  list-style-type: decimal;
-}
-
-ul{
+  padding: 10px;
   list-style-type: disc;
 }
 
-li{
-  display:list-item;
+ol {
+  list-style-position: outside;
+  padding: 10px;
+  list-style-type: decimal;
 }
 
-head{
-  display:none;
+li {
+  display: list-item;
 }
 
-script{
-  display:none;
+::marker {
+  font-variant-numeric: tabular-nums;
+  text-transform: none;
+  text-indent: 0px !important;
+  text-align: start !important;
+  text-align-last: auto !important;
 }
 
-fieldset{
-  width:100%;
+i {
+  font-style: italic;
+  font-weight: inherit;
+  line-height: normal;
 }
 
-
-::marker, ::before::marker, ::after::marker {
-    unicode-bidi: isolate;
-    font-variant-numeric: tabular-nums;
-    text-transform: none;
-    text-indent: 0px !important;
-    text-align: start !important;
-    text-align-last: auto !important;
+em {
+  font-style: italic;
+  font-weight: inherit;
+  line-height: normal;
 }
+
+b {
+  font-weight: bold;
+  font-style: inherit;
+  line-height: normal;
+}
+
+strong {
+  font-weight: bold;
+  font-style: inherit;
+  line-height: normal;
+}
+
+/*# sourceMappingURL=default.css.map */

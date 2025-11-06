@@ -3,6 +3,10 @@ import htmlm
 from urllib.parse import urljoin, urlparse
 import re
 from typing import Optional, Dict, Any
+import js
+import threading
+import time
+import collections
 
 class WebPage:
     """Represents a complete web page with its DOM and metadata"""
@@ -16,6 +20,9 @@ class WebPage:
         self.links = self._extract_links()
         self.scripts = self._extract_scripts()
         self.stylesheets = self._extract_stylesheets()
+        # simple event flags
+        self.domcontentloaded_fired = False
+        self.load_fired = False
         
     def _get_content_type(self) -> str:
         """Extract content type from headers"""
@@ -97,6 +104,13 @@ class WebBrowser:
         self.history = []
         self.cookies = {}
         self._original_html_content = ""
+        # JS integration state
+        self._js_initialized = False
+        self._timers = {}
+        self._timer_id_seq = 0
+        # Main-thread task queue for JS callbacks (e.g., setTimeout)
+        self._task_queue = collections.deque()
+        self._task_lock = threading.Lock()
         
     def navigate(self, url: str) -> WebPage:
         """Navigate to a URL and return the parsed page. Handles redirects."""
@@ -149,6 +163,23 @@ class WebBrowser:
             if self.current_page.stylesheets:
                 print(f"🎨 Loading {len(self.current_page.stylesheets)} stylesheets...")
                 self._load_css_stylesheets(self.current_page.stylesheets, base_url=final_url)
+
+            # Initialize and run JavaScript after CSS (basic behavior)
+            if self.current_page.scripts:
+                print("🧪 Initializing JavaScript engine...")
+                self._init_js_environment(self.current_page)
+                print(f"⚙️  Executing {len(self.current_page.scripts)} scripts...")
+                self._execute_scripts_in_order(self.current_page)
+
+            # Drain any queued JS callbacks produced during initial script run
+            self._drain_tasks()
+            
+            # Fire load event after scripts
+            self._dispatch_window_event('load')
+            self.current_page.load_fired = True
+
+            # Final drain after load event
+            self._drain_tasks()
             
             return self.current_page
             
@@ -234,6 +265,140 @@ class WebBrowser:
     def _get_original_html_content(self) -> str:
         """Get the original HTML content for re-parsing with CSS"""
         return self._original_html_content
+
+    def _dispatch_document_event(self, event: str):
+        try:
+            js.call("__dispatchDocumentEvent", event)
+        except Exception:
+            pass
+
+    def _dispatch_window_event(self, event: str):
+        try:
+            js.call("__dispatchWindowEvent", event)
+        except Exception:
+            pass
+
+    def _init_js_environment(self, page: WebPage):
+        if not self._js_initialized:
+            js.init()
+            self._js_initialized = True
+        # Provide simple window/document stubs and timers
+        def _post_to_main(fn):
+            try:
+                with self._task_lock:
+                    self._task_queue.append(fn)
+            except Exception:
+                pass
+
+        def _set_timeout(callback, delay):
+            self._timer_id_seq += 1
+            tid = self._timer_id_seq
+            def _runner():
+                try:
+                    # Never call JS from background threads; post to main thread queue
+                    _post_to_main(lambda: self._safe_invoke_js_callback(callback))
+                except Exception:
+                    pass
+            timer = threading.Timer(delay/1000.0, _runner)
+            timer.daemon = True
+            self._timers[tid] = timer
+            timer.start()
+            return tid
+
+        def _clear_timeout(tid):
+            t = self._timers.pop(tid, None)
+            if t:
+                try:
+                    t.cancel()
+                except Exception:
+                    pass
+
+        js.set_global("setTimeout", _set_timeout)
+        js.set_global("clearTimeout", _clear_timeout)
+        js.set_global("setInterval", _set_timeout)  # simple alias for now
+        js.set_global("clearInterval", _clear_timeout)
+
+        # Simple event dispatcher hooks implemented in JS
+        js.run_code(
+            """
+            (function(){
+              const _docListeners = {};
+              const _winListeners = {};
+              function _dispatch(map, type){
+                const ls = map[type]||[];
+                for(const fn of ls){ try{ fn(); }catch(e){ console.error(e); } }
+              }
+              this.__dispatchDocumentEvent = function(type){ _dispatch(_docListeners, type); };
+              this.__dispatchWindowEvent = function(type){ _dispatch(_winListeners, type); };
+              this.document = {
+                addEventListener: function(type, fn){
+                  (_docListeners[type]||( _docListeners[type]=[])).push(fn);
+                },
+                getElementById: function(id){ return null; },
+              };
+              this.window = this;
+              this.addEventListener = function(type, fn){
+                (_winListeners[type]||( _winListeners[type]=[])).push(fn);
+              };
+              this.location = { href: %s };
+            })();
+            """ % (repr(page.url))
+        )
+        # Fire DOMContentLoaded immediately after parsing for now
+        self._dispatch_document_event('DOMContentLoaded')
+        page.domcontentloaded_fired = True
+
+    def _safe_invoke_js_callback(self, callback):
+        try:
+            # callback is a JS function proxied via STPyV8 - call through js.call semantics if needed
+            # Here we assume it's callable directly
+            callback()
+        except Exception as e:
+            try:
+                print(f"  ❌ JS callback error: {e}")
+            except Exception:
+                pass
+
+    def _drain_tasks(self, max_batch: int = 100):
+        """Execute queued tasks on the main thread to service timers/callbacks."""
+        processed = 0
+        while True:
+            with self._task_lock:
+                if not self._task_queue:
+                    break
+                fn = self._task_queue.popleft()
+            try:
+                fn()
+            except Exception as e:
+                print(f"  ❌ Task error: {e}")
+            processed += 1
+            if processed >= max_batch:
+                break
+
+    def _execute_scripts_in_order(self, page: WebPage):
+        for script in page.scripts:
+            url = script['url']
+            try:
+                resp, final = self._http_get_follow_redirects(url)
+                if resp.get('status') == 200:
+                    code = resp.get('content', b"")
+                    if isinstance(code, bytes):
+                        try:
+                            code = code.decode('utf-8')
+                        except UnicodeDecodeError:
+                            code = code.decode('latin-1', errors='replace')
+                    # Execute untrusted third-party scripts in an isolated subprocess to avoid crashes
+                    ok = False
+                    try:
+                        ok = js.run_code_isolated(code)
+                    except Exception:
+                        ok = False
+                    if not ok:
+                        print(f"  ❌ Script execution failed or timed out: {url}")
+                else:
+                    print(f"  ⚠️  Failed to load JS: HTTP {resp.get('status')}")
+            except Exception as e:
+                print(f"  ❌ Error executing script {url}: {e}")
 
     def _http_get_follow_redirects(self, url: str, max_redirects: int = 10):
         """GET a URL and follow HTTP redirects (301, 302, 303, 307, 308). Returns (response, final_url)."""

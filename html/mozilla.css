@@ -1,0 +1,26 @@
+html, body {
+    background: radial-gradient(circle, orange, red);
+    color:white;
+    background-size: cover;
+}
+
+body {
+    background: inherit;
+    color: inherit;
+    margin:auto;
+    vertical-align: middle;
+    padding: 15px;
+}
+
+p#moztext {
+    text-align: left;
+}
+
+p#from {
+    text-align: right;
+}
+
+p{
+    font-size: larger;
+    font-family: Inter, Arial, Helvetica, sans-serif;
+}

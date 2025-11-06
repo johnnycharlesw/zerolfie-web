@@ -1,14 +1,19 @@
-import STPyV8 as v8js
+import pythonmonkey as pm
 import sys
 import os
 import threading
 from contextlib import contextmanager
 from typing import Any, Optional, Mapping
+from queue import Queue
+import subprocess
+import json as _json
 
-# Internal single shared context + lock for serialized access
-_jsctx = v8js.JSContext()
-_lock = threading.RLock()
-_initialized = False
+_thread_local = threading.local()
+
+
+def _invoke_eval(js_source: str):
+    """Evaluate JavaScript source using PythonMonkey and return the result."""
+    return pm.eval(js_source)
 
 
 class _Console(object):
@@ -22,20 +27,9 @@ class _Console(object):
         print(*args, file=sys.stderr)
 
 
-@contextmanager
 def _use_ctx():
-    """Enter the shared JS context with serialization and one-time init."""
-    global _initialized
-    with _lock:
-        _jsctx.enter()
-        try:
-            if not _initialized:
-                # Provide a minimal console implementation in JS
-                _jsctx.locals.console = _Console()
-                _initialized = True
-            yield _jsctx
-        finally:
-            _jsctx.leave()
+    """Deprecated: no JS context manager needed with PythonMonkey."""
+    raise RuntimeError("Direct context usage is not supported; use run_code/define/call.")
 
 
 def init(globals: Optional[Mapping[str, Any]] = None) -> None:
@@ -45,25 +39,81 @@ def init(globals: Optional[Mapping[str, Any]] = None) -> None:
         import js
         js.init({"pyVersion": "3.x"})
     """
-    with _use_ctx() as ctx:
-        if globals:
-            for k, v in globals.items():
-                setattr(ctx.locals, k, v)
+    if not globals:
+        return
+    import json
+    assignments = []
+    for key, value in globals.items():
+        js_value = json.dumps(value)
+        assignments.append(f"globalThis['{key}'] = {js_value}")
+    if assignments:
+        _invoke_eval(";".join(assignments))
 
 
 def set_global(name: str, value: Any) -> None:
     """Set one top-level global value in the JS context."""
-    with _use_ctx() as ctx:
-        setattr(ctx.locals, name, value)
+    import json
+    # Handle Python callables by installing JS stubs to avoid serialization errors
+    if callable(value):
+        if name in ("setTimeout", "setInterval"):
+            # Return a dummy timer id; timers are currently handled by the Python side
+            _invoke_eval(
+                f"globalThis['{name}'] = function(callback, delay){{ return 0; }}"
+            )
+            return
+        if name in ("clearTimeout", "clearInterval"):
+            _invoke_eval(
+                f"globalThis['{name}'] = function(id){{ /* no-op */ }}"
+            )
+            return
+        # Generic no-op stub for unsupported Python function bindings
+        _invoke_eval(
+            f"globalThis['{name}'] = function(){ { 'return undefined;' } }"
+        )
+        return
+    _invoke_eval(f"globalThis['{name}'] = {json.dumps(value)}")
 
 
 def run_code(source: str) -> Any:
     """
-    Execute a JavaScript source string in the shared context.
+    Execute a JavaScript source string.
     Returns the value of the last evaluated expression (if any).
     """
-    with _use_ctx() as ctx:
-        return ctx.eval(source)
+    return _invoke_eval(source)
+
+
+def run_code_isolated(source: str, timeout_ms: int = 3000) -> bool:
+    """
+    Execute JavaScript source in a separate Python subprocess using PythonMonkey.
+    Returns True if execution completed without an unhandled error; False otherwise.
+    This prevents native crashes from taking down the main process.
+    """
+    runner = (
+        "import sys, json\n"
+        "try:\n"
+        "    import pythonmonkey as pm\n"
+        "    code = sys.stdin.read()\n"
+        "    pm.eval(code)\n"
+        "    print(json.dumps({'ok': True}))\n"
+        "except Exception as e:\n"
+        "    print(json.dumps({'ok': False, 'error': str(e)}))\n"
+    )
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-c", runner],
+            input=source.encode("utf-8", errors="replace"),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=max(0.1, timeout_ms / 1000.0),
+        )
+        try:
+            out = proc.stdout.decode("utf-8", errors="replace").strip()
+            data = _json.loads(out) if out else {"ok": False}
+            return bool(data.get("ok"))
+        except Exception:
+            return False
+    except subprocess.TimeoutExpired:
+        return False
 
 
 def run_file(path: str, encoding: str = "utf-8") -> Any:
@@ -85,23 +135,19 @@ def define(name: str, source_fn: str) -> Any:
         define('upcase', '(s) => String(s).toUpperCase()')
     Returns the created function object.
     """
-    js = f"this['{name}'] = ({source_fn}); this['{name}'];"
-    with _use_ctx() as ctx:
-        return ctx.eval(js)
+    js = f"globalThis['{name}'] = ({source_fn}); globalThis['{name}'];"
+    return _invoke_eval(js)
 
 
 def call(func_name: str, *args: Any) -> Any:
     """
     Call a function by name that exists in the global JS scope.
     """
-    with _use_ctx() as ctx:
-        fn = getattr(ctx.locals, func_name, None)
-        if fn is None:
-            # try via eval in case of non-identifier or nested names
-            fn = ctx.eval(f"this['{func_name}']")
-        if fn is None:
-            raise AttributeError(f"JS function '{func_name}' not found")
-        return fn(*args)
+    import json
+    # Serialize arguments to JSON and invoke the function in JS
+    json_args = ", ".join(json.dumps(a) for a in args)
+    js = f"(function() {{ const fn = globalThis['{func_name}']; if (!fn) throw new Error('JS function \'{func_name}\' not found'); return fn({json_args}); }})()"
+    return _invoke_eval(js)
 
 
 # Backward-compatible demo similar to earlier behavior

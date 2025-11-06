@@ -1,0 +1,23 @@
+@mixin bold($selector){
+    #{$selector} {
+        font-weight: bold;
+        font-style: inherit;
+        line-height: normal;
+    }
+}
+
+@mixin italicize($selector){
+    #{$selector} {
+        font-style: italic;
+        font-weight: inherit;
+        line-height: normal;
+    }
+}
+
+@each $italichtml in i, em {
+    @include italicize($italichtml);
+}
+
+@each $boldhtml in b, strong {
+    @include bold($boldhtml);
+}

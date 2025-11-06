@@ -1,0 +1,49 @@
+@mixin header_tag($num, $fontsize, $margin){
+  h#{$num} {
+    font-size: $fontsize;
+    margin: $margin 0;
+    font-weight: bold;
+    display:block;
+  }
+}
+
+$tags: (
+  (
+    num: 1,
+    fontsize: 2em,
+    margin: 0.67em
+  ),
+  (
+    num: 2,
+    fontsize: 1.5em,
+    margin: 0.75em
+  ),
+  (
+    num: 3,
+    fontsize: 1.17em,
+    margin: 0.83em
+  ),
+  (
+    num: 4,
+    fontsize: 1em,
+    margin: 1.12em
+  ),
+  (
+    num: 5,
+    fontsize: 0.83em,
+    margin: 1.5em
+  ),
+  (
+    num: 6,
+    fontsize: 0.75em,
+    margin: 1.67em
+  )
+);
+
+@each $tag in $tags {
+  $num: map-get($tag, num);
+  $fontsize: map-get($map: $tag, $key: fontsize);
+  $margin: map-get($map: $tag, $key: margin);
+
+  @include header_tag($num, $fontsize, $margin);
+}

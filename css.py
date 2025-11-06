@@ -6,6 +6,7 @@ from functools import lru_cache
 
 class CSSTokenType(Enum):
     IDENTIFIER = "identifier"
+    FUNCTION = "function"
     STRING = "string"
     NUMBER = "number"
     PERCENTAGE = "percentage"
@@ -32,30 +33,217 @@ class CSSToken:
     value: str
     position: int = 0
 
+class CSSMediaRule:
+    def __init__(self, media: str, rules: List['CSSRule']):
+        self.media = media  # raw media query text (e.g., 'screen and (min-width: 600px)')
+        self.rules = rules
+
 class CSSStyleSheet:
     def __init__(self):
         self.rules: List[CSSRule] = []
+        self.media_rules: List[CSSMediaRule] = []
         self.imports: List[str] = []
         
     def add_rule(self, rule: 'CSSRule'):
         self.rules.append(rule)
+
+    def add_media_rule(self, media_rule: 'CSSMediaRule'):
+        self.media_rules.append(media_rule)
         
-    def get_styles_for_element(self, element, parent=None) -> Dict[str, str]:
-        """Get all applicable styles for an element"""
-        styles = {}
-        specificity_scores = {}
+    def get_styles_for_element(self, element, parent=None, media_context: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
+        """Get all applicable styles for an element.
+        If media_context is provided, include matching @media rules.
+        media_context example: { 'prefers-color-scheme': 'dark', 'media-type': 'screen' }
+        Resolves CSS custom properties using :root definitions (including matching @media blocks).
+        """
+        styles: Dict[str, str] = {}
+        specificity_scores: Dict[str, Tuple[int, int, int, int]] = {}
         
+        if media_context is None:
+            media_context = default_media_context()
+        
+        # Collect custom properties from :root (base + matching media)
+        vars_map = self._collect_root_custom_properties(media_context)
+        
+        # 1) Apply base rules
         for rule in self.rules:
             if rule.matches_element(element, parent):
                 specificity = rule.get_specificity()
                 for property_name, property_value in rule.declarations.items():
-                    # Higher specificity overwrites lower specificity
                     if (property_name not in specificity_scores or 
                         self._compare_specificity(specificity, specificity_scores[property_name]) > 0):
-                        styles[property_name] = property_value
+                        resolved = self._resolve_vars(property_value, vars_map)
+                        styles[property_name] = resolved
                         specificity_scores[property_name] = specificity
-                        
+        
+        # 2) Apply media rules that match
+        for mr in self.media_rules:
+            if self._media_matches(mr.media, media_context):
+                for rule in mr.rules:
+                    if rule.matches_element(element, parent):
+                        specificity = rule.get_specificity()
+                        for property_name, property_value in rule.declarations.items():
+                            if (property_name not in specificity_scores or 
+                                self._compare_specificity(specificity, specificity_scores[property_name]) > 0):
+                                resolved = self._resolve_vars(property_value, vars_map)
+                                styles[property_name] = resolved
+                                specificity_scores[property_name] = specificity
+        
+        # Synthesize background-color from background if needed and possible
+        if 'background-color' not in styles and 'background' in styles:
+            bg = styles['background']
+            if self._looks_like_color(bg):
+                styles['background-color'] = bg
+        
+        # Sanitize unresolved var(...) for critical color properties
+        for key in ('background-color', 'color', 'border-color', 'background'):
+            if key in styles and isinstance(styles[key], str) and 'var(' in styles[key]:
+                # Apply safe defaults
+                if key in ('background', 'background-color'):
+                    styles[key] = '#ffffff'
+                elif key == 'color':
+                    styles[key] = '#000000'
+                elif key == 'border-color':
+                    styles[key] = '#000000'
+        
         return styles
+
+    def _collect_root_custom_properties(self, media_context: Optional[Dict[str, Any]]) -> Dict[str, str]:
+        """Collect custom properties defined on :root from base and matching @media rules."""
+        result: Dict[str, str] = {}
+        # Define a helper to test if a rule targets :root
+        def rule_targets_root(rule: 'CSSRule') -> bool:
+            for sel in rule.selectors:
+                if len(sel.parts) == 1:
+                    p = sel.parts[0]
+                    if (p.type == 'pseudo' and p.value == 'root') or (p.type == 'element' and p.value.lower() in ('html',)):
+                        return True
+            return False
+        
+        # Base rules
+        for rule in self.rules:
+            if rule_targets_root(rule):
+                for k, v in rule.declarations.items():
+                    if k.startswith('--'):
+                        result[k] = v
+        
+        # Media rules
+        if media_context is None:
+            media_context = {}
+        for mr in self.media_rules:
+            if self._media_matches(mr.media, media_context):
+                for rule in mr.rules:
+                    if rule_targets_root(rule):
+                        for k, v in rule.declarations.items():
+                            if k.startswith('--'):
+                                result[k] = v
+        return result
+
+    def _resolve_vars(self, value: str, vars_map: Dict[str, str], depth: int = 0) -> str:
+        """Resolve var(--name[, fallback]) references in value using vars_map.
+        Limits recursion depth to prevent cycles.
+        """
+        if not value or 'var(' not in value:
+            return value
+        if depth > 8:
+            return value
+        
+        def replace_var(match: re.Match) -> str:
+            inner = match.group(1)
+            # split on first comma not inside parentheses (simple approach: split once)
+            name = inner
+            fallback = None
+            # handle nested functions in fallback by scanning manually
+            paren = 0
+            comma_index = -1
+            for i, ch in enumerate(inner):
+                if ch == '(':
+                    paren += 1
+                elif ch == ')':
+                    paren = max(paren - 1, 0)
+                elif ch == ',' and paren == 0:
+                    comma_index = i
+                    break
+            if comma_index != -1:
+                name = inner[:comma_index].strip()
+                fallback = inner[comma_index + 1 :].strip()
+            else:
+                name = inner.strip()
+            if name.startswith('--') and name in vars_map:
+                return self._resolve_vars(vars_map[name], vars_map, depth + 1)
+            # If variable missing, use fallback if provided
+            if fallback is not None:
+                return self._resolve_vars(fallback, vars_map, depth + 1)
+            # No fallback; keep original var() to signal unresolved
+            return match.group(0)
+        
+        # Regex to capture content inside var(...)
+        pattern = re.compile(r"var\(\s*(.*?)\s*\)")
+        # Replace iteratively until no change or depth exceeded
+        prev = None
+        cur = value
+        iter_count = 0
+        while cur != prev and iter_count < 10 and 'var(' in cur:
+            prev = cur
+            cur = pattern.sub(replace_var, cur)
+            iter_count += 1
+        return cur
+
+    def _looks_like_color(self, s: str) -> bool:
+        if not isinstance(s, str):
+            return False
+        st = s.strip().lower()
+        if st.startswith('#'):
+            return True
+        if st.startswith('rgb(') or st.startswith('rgba('):
+            return True
+        # basic named colors
+        if st in ('white','black','red','green','blue','gray','grey','silver','navy','teal','purple','yellow','orange','magenta','cyan'):
+            return True
+        return False
+
+    def _media_matches(self, media_text: str, ctx: Dict[str, Any]) -> bool:
+        """Very small media evaluator supporting prefers-color-scheme and optional media type.
+        Examples matched:
+          (prefers-color-scheme: dark)
+          screen and (prefers-color-scheme: light)
+          all and (prefers-color-scheme: dark)
+        Unrecognized conditions default to False to avoid accidental matches.
+        """
+        if not media_text:
+            return False
+        text = ' '.join(media_text.strip().split())  # normalize spaces
+        text_lower = text.lower()
+
+        # Extract optional media type before 'and'
+        media_type = None
+        cond_part = text_lower
+        if ' and ' in text_lower:
+            first, rest = text_lower.split(' and ', 1)
+            # basic media types
+            if first in ('all', 'screen', 'print'):  # extend as needed
+                media_type = first
+                cond_part = rest
+        
+        # If media type is present, optionally compare to context (default to screen if unknown)
+        wanted_type = ctx.get('media-type')
+        if media_type is not None and wanted_type is not None:
+            if media_type != 'all' and media_type != wanted_type:
+                return False
+        
+        # Now handle prefers-color-scheme condition
+        # Expected forms like: (prefers-color-scheme: dark) or multiple ands (we only parse one key condition now)
+        m = re.search(r"\(\s*prefers-color-scheme\s*:\s*(dark|light)\s*\)", cond_part)
+        if m:
+            need = m.group(1)
+            have = str(ctx.get('prefers-color-scheme') or '').lower()
+            if need and have:
+                return need == have
+            # If we have a need but no context, don't match
+            return False
+        
+        # If there was no known condition, be conservative
+        return False
 
     def _compare_specificity(self, spec1: Tuple[int, int, int, int], spec2: Tuple[int, int, int, int]) -> int:
         """Compare two specificity tuples. Returns 1 if spec1 > spec2, -1 if spec1 < spec2, 0 if equal"""
@@ -140,7 +328,7 @@ class CSSSelector:
 
 @dataclass
 class CSSSelectorPart:
-    type: str  # 'element', 'class', 'id', 'universal'
+    type: str  # 'element', 'class', 'id', 'universal', 'pseudo'
     value: str
     combinator: Optional[str] = None  # ' ', '>', '+', '~'
 
@@ -159,6 +347,18 @@ class CSSSelectorPart:
         elif self.type == 'id':
             id_attr = element.getAttribute('id')
             return id_attr == self.value
+        elif self.type == 'pseudo':
+            # Support :root minimal matching: treat top-level html element as root too
+            if self.value == 'root':
+                try:
+                    tag = getattr(element, 'tagName', '')
+                    if isinstance(tag, str) and tag.lower() == 'html':
+                        return True
+                except Exception:
+                    pass
+                return not hasattr(element, 'parent') or getattr(element, 'parent') is None
+            # Unknown pseudo-class not supported
+            return False
         return False
 
 class CSSTokenizer:
@@ -300,23 +500,32 @@ class CSSTokenizer:
         self._add_token(CSSTokenType.AT_KEYWORD, self.css_text[start:self.position])
         
     def _consume_identifier_or_delim(self):
-        """Consume identifier or delimiter"""
+        """Consume identifier or delimiter; recognize function tokens like linear-gradient("""
         start = self.position
+        text = self.css_text
+        n = len(text)
         
         # Check if it's a valid identifier start
-        if (self.css_text[self.position].isalpha() or 
-            self.css_text[self.position] in '-_' or
-            ord(self.css_text[self.position]) > 127):  # Non-ASCII
+        if (text[self.position].isalpha() or 
+            text[self.position] in '-_' or
+            ord(text[self.position]) > 127):  # Non-ASCII
             # Consume identifier
-            while (self.position < len(self.css_text) and 
-                   (self.css_text[self.position].isalnum() or 
-                    self.css_text[self.position] in '-_' or
-                    ord(self.css_text[self.position]) > 127)):
+            while (self.position < n and 
+                   (text[self.position].isalnum() or 
+                    text[self.position] in '-_' or
+                    ord(text[self.position]) > 127)):
                 self.position += 1
-            self._add_token(CSSTokenType.IDENTIFIER, self.css_text[start:self.position])
+            ident = text[start:self.position]
+            # If immediately followed by '(', it's a function token
+            if self.position < n and text[self.position] == '(':
+                self._add_token(CSSTokenType.FUNCTION, ident)
+                self._add_token(CSSTokenType.LEFT_PAREN, '(')
+                self.position += 1
+            else:
+                self._add_token(CSSTokenType.IDENTIFIER, ident)
         else:
             # Single character delimiter
-            self._add_token(CSSTokenType.DELIM, self.css_text[self.position])
+            self._add_token(CSSTokenType.DELIM, text[self.position])
             self.position += 1
             
     def _add_token(self, token_type: CSSTokenType, value: str):
@@ -539,11 +748,19 @@ class CSSParser:
                         parts.append(CSSSelectorPart('class', tokens[pos].value))
                         pos += 1
                     else:
-                        # Lone '.' is invalid here; stop parsing this simple selector
                         break
                 elif v == '*':
                     pos += 1
                     parts.append(CSSSelectorPart('universal', '*'))
+                elif v == ':':
+                    # Pseudo-class like :root
+                    pos += 1
+                    if pos < n and tokens[pos].type == T.IDENTIFIER:
+                        parts.append(CSSSelectorPart('pseudo', tokens[pos].value))
+                        pos += 1
+                    else:
+                        # Unknown or malformed pseudo; stop
+                        break
                 else:
                     break
             else:
@@ -551,60 +768,101 @@ class CSSParser:
         return parts, pos
         
     def _parse_declarations(self) -> Dict[str, str]:
-        """Parse CSS declarations"""
+        """Parse CSS declarations; support custom properties starting with --"""
         declarations = {}
+        T = CSSTokenType
         
         while not self._is_eof():
             self._consume_whitespace()
             
-            if self._peek_type() == CSSTokenType.RIGHT_BRACE:
+            if self._peek_type() == T.RIGHT_BRACE:
                 break
                 
-            # Parse property name
-            if self._peek_type() == CSSTokenType.IDENTIFIER:
-                property_name = self._consume_token().value
+            # Parse property name: identifier or custom property beginning with '--'
+            prop_name = None
+            if self._peek_type() == T.IDENTIFIER:
+                prop_name = self._consume_token().value
+            elif self._peek_type() == T.DELIM and self._peek_value() == '-':
+                # Check for '--'
+                # Lookahead: two hyphens followed by identifier characters
+                start_pos = self.position
+                d1 = self._consume_token().value  # first '-'
+                if self._peek_type() == T.DELIM and self._peek_value() == '-':
+                    self._consume_token()  # second '-'
+                    # Collect name characters
+                    name_chars = ['--']
+                    while self._peek_type() in (T.IDENTIFIER, T.DELIM):
+                        # IDENTIFIER tokens may contain sequences; DELIM may bring '-'
+                        t = self._consume_token()
+                        name_chars.append(t.value)
+                        # Stop if we hit a colon
+                        if self._peek_type() == T.COLON:
+                            break
+                    prop_name = ''.join(name_chars)
+                else:
+                    # Not a custom property; revert and skip token
+                    self.position = start_pos
+            
+            if not prop_name:
+                # Not a property; consume one token to avoid infinite loop
+                if not self._is_eof():
+                    self._consume_token()
+                continue
                 
-                self._consume_whitespace()
+            self._consume_whitespace()
+            
+            if not self._consume_token_if_type(T.COLON):
+                continue
                 
-                if not self._consume_token_if_type(CSSTokenType.COLON):
-                    continue
-                    
-                self._consume_whitespace()
-                
-                # Parse property value
-                property_value = self._parse_property_value()
-                
-                declarations[property_name] = property_value
-                
-                self._consume_whitespace()
-                
-                # Consume semicolon if present
-                self._consume_token_if_type(CSSTokenType.SEMICOLON)
+            self._consume_whitespace()
+            
+            # Parse property value (balance parentheses so gradients/functions work)
+            property_value = self._parse_property_value()
+            
+            declarations[prop_name] = property_value
+            
+            self._consume_whitespace()
+            
+            # Consume semicolon if present
+            self._consume_token_if_type(T.SEMICOLON)
                 
         return declarations
         
     def _parse_property_value(self) -> str:
-        """Parse a CSS property value"""
-        value_parts = []
+        """Parse a CSS property value; keep content until semicolon or '}' with balanced parens"""
+        parts = []
+        paren_depth = 0
+        T = CSSTokenType
         
         while not self._is_eof():
-            token_type = self._peek_type()
-            
-            if token_type in [CSSTokenType.SEMICOLON, CSSTokenType.RIGHT_BRACE]:
+            tt = self._peek_type()
+            if tt == T.SEMICOLON and paren_depth == 0:
                 break
-            elif token_type == CSSTokenType.WHITESPACE:
-                value_parts.append(' ')
+            if tt == T.RIGHT_BRACE and paren_depth == 0:
+                break
+            if tt == T.WHITESPACE:
+                parts.append(' ')
                 self._consume_token()
+                continue
+            t = self._consume_token()
+            if t.type == T.LEFT_PAREN:
+                paren_depth += 1
+                parts.append(t.value)
+            elif t.type == T.RIGHT_PAREN:
+                paren_depth = max(paren_depth - 1, 0)
+                parts.append(t.value)
             else:
-                token = self._consume_token()
-                value_parts.append(token.value)
-                
-        return ''.join(value_parts).strip()
+                parts.append(t.value)
+        return ''.join(parts).strip()
         
     def _parse_at_rule(self, stylesheet: CSSStyleSheet):
-        """Parse @-rules like @import"""
+        """Parse @-rules like @import and @media"""
         if self._peek_value().lower() == '@import':
             self._parse_import_rule(stylesheet)
+            return
+        if self._peek_value().lower() == '@media':
+            self._parse_media_rule(stylesheet)
+            return
         else:
             # Skip unknown @-rules
             while not self._is_eof() and self._peek_type() != CSSTokenType.SEMICOLON:
@@ -622,6 +880,51 @@ class CSSParser:
             stylesheet.imports.append(url)
             
         self._consume_token_if_type(CSSTokenType.SEMICOLON)
+
+    def _parse_media_rule(self, stylesheet: CSSStyleSheet):
+        """Parse @media rule with nested style rules"""
+        # Consume '@media'
+        self._consume_token()
+        # Collect media query prelude until '{'
+        media_parts: List[str] = []
+        brace_found = False
+        while not self._is_eof():
+            tt = self._peek_type()
+            if tt == CSSTokenType.LEFT_BRACE:
+                self._consume_token()
+                brace_found = True
+                break
+            # normalize whitespace to single spaces
+            if tt == CSSTokenType.WHITESPACE:
+                media_parts.append(' ')
+                self._consume_token()
+            else:
+                media_parts.append(self._consume_token().value)
+        media_text = ''.join(media_parts).strip()
+
+        # Parse nested rules until matching '}'
+        nested_rules: List[CSSRule] = []
+        while not self._is_eof():
+            self._consume_whitespace()
+            if self._peek_type() == CSSTokenType.RIGHT_BRACE:
+                self._consume_token()
+                break
+            if self._peek_type() == CSSTokenType.AT_KEYWORD:
+                # For simplicity, skip nested at-rules inside @media (could be extended)
+                self._parse_at_rule(stylesheet)
+                continue
+            # Parse a normal rule inside media
+            start_pos = self.position
+            if self._looks_like_selector(self.position):
+                rule = self._parse_rule()
+                if rule:
+                    nested_rules.append(rule)
+                if self.position == start_pos:
+                    self._consume_token()
+            else:
+                self._consume_token()
+
+        stylesheet.add_media_rule(CSSMediaRule(media_text, nested_rules))
         
     # Helper methods
     def _is_eof(self) -> bool:
@@ -666,6 +969,23 @@ def parse_css(css_text: str) -> CSSStyleSheet:
     """Parse CSS text and return a stylesheet object"""
     parser = CSSParser(css_text)
     return parser.parse()
+
+# Media context helpers
+def default_media_context() -> Dict[str, Any]:
+    """Build a default media context using darkdetect if available.
+    Returns keys: 'prefers-color-scheme' ('dark'|'light'), 'media-type' ('screen').
+    """
+    scheme = None
+    try:
+        import darkdetect  # type: ignore
+        scheme = 'dark' if getattr(darkdetect, 'isDark', lambda: False)() else 'light'
+    except Exception:
+        # Default to light if detection is unavailable
+        scheme = 'light'
+    return {
+        'prefers-color-scheme': scheme,
+        'media-type': 'screen',
+    }
 
 def test_css_parser():
     """Test function for the CSS parser"""

@@ -1,0 +1,19 @@
+@mixin frameEmbed($selector) {
+    #{$selector} {
+        border-style: inset;
+        border-width: 5px;
+    }
+    @media (prefers-color-scheme: light) {
+        #{$selector} {
+            border-color: rgb(83, 83, 83);
+        }
+    }
+    @media (prefers-color-scheme: dark) {
+        #{$selector} {
+            border-color: rgb(148, 148, 148);
+        }
+    }
+}
+
+@include frameEmbed(iframe);
+@include frameEmbed(frame);

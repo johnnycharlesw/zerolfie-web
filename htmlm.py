@@ -318,8 +318,15 @@ class HTMLDomInitializer:
             'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
             'link', 'meta', 'param', 'source', 'track', 'wbr'
         }
+
+        # Basic insertion mode flags
+        self.in_head = False
+        self.seen_html = False
+        self.seen_head = False
+        self.seen_body = False
         
         self.parse()
+        self._post_process_structure()
         self._load_css()
         self._apply_styles()
     
@@ -332,6 +339,14 @@ class HTMLDomInitializer:
         self.document = HTMLElement('document')
         self.current_element = self.document
         self.stack = [self.document]
+        
+        # Ensure an <html> element exists as top-level container
+        html_el = HTMLElement('html', self.document)
+        self.document.appendChild(html_el)
+        self.stack.append(html_el)
+        self.current_element = html_el
+        self.seen_html = True
+        self.in_head = True  # start expecting head
         
         # Parse tokens
         for token in self.tokens:
@@ -349,45 +364,103 @@ class HTMLDomInitializer:
                 self._handle_doctype(token)
     
     def _handle_open_tag(self, token):
-        """Handle opening tags"""
+        """Handle opening tags with minimal insertion-mode logic"""
         tag_info = token.value
         tag_name = tag_info['name']
         attributes = tag_info['attributes']
+        tag_name = tag_name.lower()
+
+        # Handle duplicate or misplaced <html>
+        if tag_name == 'html':
+            existing_html = self._find_in_stack('html')
+            if existing_html is not None:
+                # Switch context to existing html and do not create a new one
+                self.current_element = existing_html
+                # Ensure stack has [document, html]
+                self.stack = [self.stack[0], existing_html]
+                return
         
-        # Create new element
+        # Ensure head/body containers
+        if tag_name == 'head':
+            # Reuse existing head if present
+            self._ensure_head()
+            self.current_element = self._find_in_stack('head')
+            # Reset stack to [document, html, head]
+            self.stack = [self.stack[0], self._find_in_stack('html'), self.current_element]
+            self.in_head = True
+            self.seen_head = True
+            return
+        if tag_name == 'body':
+            # Leaving head if we are in it
+            if self.in_head:
+                self._close_until('html')
+                self.in_head = False
+            # Reuse existing body if present
+            self._ensure_body()
+            self.current_element = self._find_in_stack('body')
+            # Reset stack to [document, html, body]
+            self.stack = [self.stack[0], self._find_in_stack('html'), self.current_element]
+            self.seen_body = True
+            return
+
+        # If we are in head and encounter a body-content tag, close head
+        if self.in_head and tag_name not in ('meta', 'title', 'style', 'link', 'base', 'head'):
+            self._ensure_head()
+            self._close_until('html')
+            self.in_head = False
+            self._ensure_body()
+            self.current_element = self._find_in_stack('body')
+
+        # Create new element under current
         element = HTMLElement(tag_name, self.current_element)
-        
-        # Set attributes
         for attr_name, attr_value in attributes.items():
             element.setAttribute(attr_name, attr_value)
-        
-        # Add to current element
         self.current_element.appendChild(element)
-        
+
+        # Auto-close paragraphs when a new block starts
+        if tag_name in ('div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'table'):
+            self._auto_close('p')
+
         # Push to stack and set as current (unless it's self-closing)
         if tag_name not in self.self_closing_tags:
             self.stack.append(element)
             self.current_element = element
     
     def _handle_close_tag(self, token):
-        """Handle closing tags"""
-        tag_name = token.value
-        
+        """Handle closing tags with minimal implied rules"""
+        tag_name = token.value.lower()
+
+        # Implied end tags for <p>
+        if tag_name == 'p' and self._find_in_stack('p') is None:
+            return
+
+        # Special handling for closing html: pop to html if present
+        if tag_name == 'html':
+            html_el = self._find_in_stack('html')
+            if html_el is None:
+                return
+            # Reduce stack to [document]
+            self.stack = [self.stack[0]]
+            self.current_element = self.stack[-1]
+            return
+
         # Find matching opening tag in stack
         for i in range(len(self.stack) - 1, -1, -1):
-            if self.stack[i].tagName == tag_name:
+            if isinstance(self.stack[i], HTMLElement) and self.stack[i].tagName == tag_name:
                 # Pop stack up to and including this element
                 self.stack = self.stack[:i]
-                if self.stack:
-                    self.current_element = self.stack[-1]
-                else:
-                    self.current_element = self.document
-                break
+                self.current_element = self.stack[-1] if self.stack else self.document
+                # Leaving head when head closes
+                if tag_name == 'head':
+                    self.in_head = False
+                return
+        # If not found, ignore
+        return
     
     def _handle_self_closing_tag(self, token):
         """Handle self-closing tags"""
         tag_info = token.value
-        tag_name = tag_info['name']
+        tag_name = tag_info['name'].lower()
         attributes = tag_info['attributes']
         
         # Create new element
@@ -402,8 +475,9 @@ class HTMLDomInitializer:
     
     def _handle_text(self, token):
         """Handle text content"""
-        text = token.value.strip()
-        if text:
+        text = token.value
+        # Preserve whitespace between inline text for renderer; trim only purely whitespace nodes
+        if text and text.strip():
             text_node = HTMLTextNode(text)
             self.current_element.appendChild(text_node)
     
@@ -469,6 +543,69 @@ class HTMLDomInitializer:
     def get_document(self):
         """Return the parsed document"""
         return self.document
+
+    # --- helpers for minimal tree construction ---
+    def _ensure_head(self):
+        if self._find_in_stack('head') is None:
+            html_el = self._find_in_stack('html') or self.stack[0]
+            head = HTMLElement('head', html_el)
+            html_el.appendChild(head)
+    def _ensure_body(self):
+        if self._find_in_stack('body') is None:
+            html_el = self._find_in_stack('html') or self.stack[0]
+            body = HTMLElement('body', html_el)
+            html_el.appendChild(body)
+    def _find_in_stack(self, tag):
+        for el in reversed(self.stack):
+            if isinstance(el, HTMLElement) and el.tagName == tag:
+                return el
+        # Also scan children of html for existing head/body
+        if tag in ('head','body','html'):
+            root = self.stack[0]
+            for child in getattr(root, 'childNodes', []):
+                if isinstance(child, HTMLElement) and child.tagName == 'html':
+                    for c in child.childNodes:
+                        if isinstance(c, HTMLElement) and c.tagName == tag:
+                            return c
+        return None
+    def _close_until(self, tag):
+        # Pop until we reach tag or document
+        while len(self.stack) > 1:
+            if isinstance(self.stack[-1], HTMLElement) and self.stack[-1].tagName == tag:
+                break
+            self.stack.pop()
+        self.current_element = self.stack[-1]
+    def _auto_close(self, tag):
+        # Close tag if present on stack
+        for i in range(len(self.stack) - 1, -1, -1):
+            if isinstance(self.stack[i], HTMLElement) and self.stack[i].tagName == tag:
+                self.stack = self.stack[:i]
+                self.current_element = self.stack[-1]
+                return
+    def _post_process_structure(self):
+        # Ensure head/body exist under html
+        html_el = None
+        for child in self.document.childNodes:
+            if isinstance(child, HTMLElement) and child.tagName == 'html':
+                html_el = child
+                break
+        if html_el is None:
+            html_el = HTMLElement('html', self.document)
+            self.document.appendChild(html_el)
+        # Move stray body/head under html
+        head = None
+        body = None
+        for c in list(html_el.childNodes):
+            if isinstance(c, HTMLElement) and c.tagName == 'head':
+                head = c
+            if isinstance(c, HTMLElement) and c.tagName == 'body':
+                body = c
+        if head is None:
+            head = HTMLElement('head', html_el)
+            html_el.appendChild(head)
+        if body is None:
+            body = HTMLElement('body', html_el)
+            html_el.appendChild(body)
 
 def print_dom_tree(element, indent=0, show_styles=False):
     """Helper function to print DOM tree structure"""

@@ -1,0 +1,33 @@
+a:link {
+  text-decoration: underline;
+}
+
+@mixin link_theme(
+  $color-scheme,
+  $link-color,
+  $link-hover-color,
+  $link-visited-color,
+  $link-visited-hover-color
+){
+  @media (prefers-color-scheme: #{$color-scheme}){
+    a:link {
+      color: $link-color;
+    }
+
+    a:link:hover {
+      color: $link-hover-color;
+    }
+
+    a:visited {
+      color: $link-visited-color;
+    }
+
+    a:visited:hover {
+      color: $link-visited-hover-color;
+    }
+  }
+}
+
+@include link_theme(light, blue, rgb(0, 72, 255), purple, rgb(145, 0, 145));
+
+@include link_theme(dark, rgb(43, 101, 247), rgb(51, 107, 248), violet, rgb(255, 138, 255));

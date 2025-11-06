@@ -1,0 +1,75 @@
+/*
+  UA stylesheet: Unicode Bidi Isolation
+  - Isolate text in common inline and interactive elements to prevent bidi context bleed
+  - Provide stronger control for bdo and dir attributes
+*/
+
+/* Base isolation for common inline/phrasing and controls */
+span,
+a,
+em,
+strong,
+small,
+sub,
+sup,
+code,
+kbd,
+samp,
+var,
+abbr,
+time,
+mark,
+ruby,
+rt,
+rp,
+bdi,
+label,
+input,
+select,
+textarea,
+button,
+figcaption,
+caption,
+td,
+th {
+  unicode-bidi: isolate;
+}
+
+/* Explicit bidi override element */
+bdo[dir="ltr"] {
+  direction: ltr;
+  unicode-bidi: isolate-override;
+}
+
+bdo[dir="rtl"] {
+  direction: rtl;
+  unicode-bidi: isolate-override;
+}
+
+/* Attribute-driven direction on generic elements */
+/* Elements explicitly marked with dir should establish their own bidi context */
+[dir="ltr"] {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+[dir="rtl"] {
+  direction: rtl;
+  unicode-bidi: isolate;
+}
+
+/* Tables can contain mixed-direction content in cells; ensure isolation at cell level (covered above) */
+/* Lists and list items often contain inline content; isolate them too to be safe without changing layout semantics */
+ul, ol, li {
+  unicode-bidi: isolate;
+}
+
+/* Pre/code blocks and block-level typographic elements with possible inline content */
+pre, code, samp, kbd { /* code also listed above; repetition is harmless for clarity */
+  unicode-bidi: isolate;
+}
+
+/* Forms can have nested inline labels and values; ensure wrappers also isolate */
+form, fieldset, legend {
+  unicode-bidi: isolate;
+}

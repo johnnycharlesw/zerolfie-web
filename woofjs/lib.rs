@@ -38,7 +38,7 @@ impl Expr {
                     BinOp::Mul => Ok(l_val * r_val),
                     BinOp::Div => {
                         if r_val == 0 {
-                            Err("Cannot divide by zero".to_string())
+                            Err("Sorry, we cannot divide by 0 for you, it just does not make sense in math.".to_string())
                         }else{
                             Ok(l_val / r_val)
                         }

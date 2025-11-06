@@ -1,0 +1,30 @@
+@mixin button($selector) {
+  #{$selector} {
+    border-style: outset;
+  }
+
+  #{$selector}:disabled{
+    cursor: not-allowed;
+  }
+
+  @media (prefers-color-scheme: light){
+    #{$selector} {
+      background-color: lightgray;
+    }
+  }
+
+  @media (prefers-color-scheme: dark){
+    #{$selector} {
+      background-color: rgb(27, 27, 27);
+    }
+  }
+}
+
+$htmlbuttons: (
+  "button",
+  "input[type=button]",
+  "input[type=submit]"
+);
+@each $sel in $htmlbuttons {
+  @include button($sel);
+}

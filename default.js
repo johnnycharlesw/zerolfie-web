@@ -10,7 +10,7 @@
     });
     
 })();
-// Apply CSS fpor deprecated elements in real time
+// Apply CSS for deprecated elements in real time
 async function cssApplyLoop(){
     while (true){
         cssApply();

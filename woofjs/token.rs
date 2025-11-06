@@ -86,6 +86,9 @@ pub enum Token {
     #[token("catch")]
     KeywordCatchBlockBegin,
 
+    #[regex(r"(\[|\])")]
+    ArrayMarker,
+
     // Catch any error
 
     #[error]

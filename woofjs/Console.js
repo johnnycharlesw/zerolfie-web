@@ -118,4 +118,4 @@ class Console{
     
 }
 
-// export const console = new Console();
+export const console = new Console();

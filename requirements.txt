@@ -1,2 +1,9 @@
+aiodns
+backports.zstd
+Brotli
+darkdetect
 dnspython
-STPyV8
+pipdeptree
+psutil
+pythonmonkey
+pillow>=10

@@ -8,12 +8,12 @@ class Date {
     }
 
     static prototype={
-        getTime: _Date.getTime,
-        getMonth: _Date.getMonth,
-        getFullYear: _Date.getFullYear,
-        getDay: _Date.getDay,
-        getSeconds: _Date.getSeconds,
-        toISOString: _Date.toISOString
+        getTime: Date.getTime,
+        getMonth: Date.getMonth,
+        getFullYear: Date.getFullYear,
+        getDay: Date.getDay,
+        getSeconds: Date.getSeconds,
+        toISOString: Date.toISOString
     }
 
     // Generic methods

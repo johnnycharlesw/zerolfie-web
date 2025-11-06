@@ -1,0 +1,51 @@
+/* Minimal styling for New Tab */
+:root{
+  color-scheme: light dark;
+}
+html, body{
+  margin:0;
+  padding:0;
+  font-family: "Inter", sans-serif;
+}
+.container{
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px;
+}
+.brand h1{
+  margin: 0 0 4px 0;
+  font-size: 28px;
+}
+.brand .tag{
+  margin: 0 0 16px 0;
+  color: #777;
+  font-size: 14px;
+}
+.actions{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0 24px 0;
+}
+.action{
+  display:inline-block;
+  padding: 8px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+  background: #0d6efd;
+  color: white;
+}
+.action:hover{
+  background: #0b5ed7;
+}
+.links h2{
+  margin: 0 0 8px 0;
+  font-size: 18px;
+}
+.links ul{
+  margin: 0;
+  padding-left: 18px;
+}
+.links a{
+  color: inherit;
+}

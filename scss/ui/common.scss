@@ -1,0 +1,24 @@
+button, input, textarea, select, progress, meter {
+  background-color: rgb(151,151,151);
+}
+
+$selectors: button, input, textarea, select, progress, meter, fieldset;
+
+@each $selector in $selectors {
+  #{$selector} {
+    border-color:rgb(148, 148, 148);
+    border-style:solid;
+  }
+}
+
+@mixin disable_user_selection($selector){
+  #{$selector} {
+    user-select: none;
+  }
+}
+
+$selectors: button, select, progress, meter, legend;
+
+@each $selector in $selectors {
+  @include disable_user_selection($selector);
+}
