@@ -1,2 +1,4 @@
-class SyntaxErrorConstructor extends Error {}
+class SyntaxErrorConstructor extends Error {
+    name = "SyntaxError";
+}
 globalThis.SyntaxError = SyntaxErrorConstructor;
