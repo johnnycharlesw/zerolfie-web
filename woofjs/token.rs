@@ -20,6 +20,15 @@ pub enum Token {
     #[token("/")]
     Slash,
 
+    #[regex(r"\b%\b")]
+    Percent,
+
+    #[regex(r"\+\+")]
+    IncrementOperator,
+
+    #[regex(r"\-\-")]
+    DecrementOperator,
+
     #[token("(")]
     LParen,
 

@@ -40,7 +40,7 @@ class ZerolfieWebView:
         # Address bar
         self.address_var = tk.StringVar()
         self.address_var.set("about:newtab")
-        self.address_entry = ttk.Entry(self.nav_frame, textvariable=self.address_var, font=('Arial', 10))
+        self.address_entry = ttk.Entry(self.nav_frame, textvariable=self.address_var, font=('Inter', 10))
         self.address_entry.bind('<Return>', self.navigate_from_address)
         
         # Go button
@@ -50,8 +50,8 @@ class ZerolfieWebView:
         self.content_frame = ttk.Frame(self.root)
         
         # Page render area (Canvas with scrollbar)
-        self.page_canvas_container = ttk.Frame(self.content_frame, width=100, height=100)
-        self.page_canvas = tk.Canvas(self.page_canvas_container, bg='white', highlightthickness=0, width=100, height=100)
+        self.page_canvas_container = ttk.Frame(self.content_frame)
+        self.page_canvas = tk.Canvas(self.page_canvas_container, bg='white')
         self.page_scrollbar = ttk.Scrollbar(self.page_canvas_container, orient=tk.VERTICAL, command=self.page_canvas.yview)
         self.page_canvas.configure(yscrollcommand=self.page_scrollbar.set)
         self.page_canvas.bind_all('<MouseWheel>', lambda e: self.page_canvas.yview_scroll(int(-1*(e.delta/120)), 'units'))
@@ -75,15 +75,15 @@ class ZerolfieWebView:
         
         # Page view tab
         self.page_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.page_frame, text="🌐 Page")
+        self.notebook.add(self.page_frame, text="Page")
         
         # Assemble canvas + scrollbar inside the page tab
-        self.page_canvas_container.pack(fill=tk.BOTH, expand=True, in_=(self.page_frame))
+        self.page_canvas_container.pack(fill=tk.BOTH, expand=True)
         self.page_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.page_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.page_frame.pack(fill=tk.BOTH, expand=True)
         
-        
-        
+        """
         # DOM view tab
         self.dom_frame = ttk.Frame(self.notebook)
         self.notebook.add(self.dom_frame, text="🌳 DOM")
@@ -112,7 +112,7 @@ class ZerolfieWebView:
         
         # Links listbox with scrollbar
         self.links_list_frame = ttk.Frame(self.links_frame)
-        self.links_listbox = tk.Listbox(self.links_list_frame, font=('Arial', 10))
+        self.links_listbox = tk.Listbox(self.links_list_frame, font=('Inter', 10))
         self.links_scrollbar = ttk.Scrollbar(self.links_list_frame, orient=tk.VERTICAL, command=self.links_listbox.yview)
         self.links_listbox.configure(yscrollcommand=self.links_scrollbar.set)
         
@@ -133,8 +133,8 @@ class ZerolfieWebView:
             bg='#fafafa'
         )
         self.info_display.pack(fill=tk.BOTH, expand=True)
-        
-        self.notebook.pack(fill=tk.BOTH, expand=True, in_=(self.content_frame,))
+        """
+        self.notebook.pack(fill=tk.BOTH, expand=True)
 
         print(f"Canvas size: {self.page_canvas.winfo_width()}x{self.page_canvas.winfo_height()}")
         
@@ -210,7 +210,6 @@ class ZerolfieWebView:
                 self.render_page(page)
             else:
                 self.root.after(30, lambda p=page: self.render_page(p))
-            self.display_dom_tree(page)
             self.display_css_info(page)
             self.display_links(page)
             self.display_page_info(page)
@@ -243,26 +242,6 @@ class ZerolfieWebView:
         """Deprecated helper kept for reference."""
         return ""
     
-    def display_dom_tree(self, page):
-        """Display the DOM tree"""
-        self.dom_display.delete(1.0, tk.END)
-        
-        if page and page.dom:
-            # Use the existing DOM tree printer
-            import io
-            import sys
-            
-            # Capture the output
-            old_stdout = sys.stdout
-            sys.stdout = buffer = io.StringIO()
-            
-            try:
-                htmlm.print_dom_tree(page.dom, show_styles=True)
-                dom_content = buffer.getvalue()
-            finally:
-                sys.stdout = old_stdout
-            
-            self.dom_display.insert(tk.END, dom_content)
     
     def display_css_info(self, page):
         """Display CSS information"""
@@ -412,7 +391,7 @@ class PageRenderer:
     def _get_font(self, size=16, weight='normal'):
         key = (size, weight)
         if key not in self.font_cache:
-            self.font_cache[key] = tkfont.Font(family='Arial', size=size, weight=weight)
+            self.font_cache[key] = tkfont.Font(family='Inter', size=size, weight=weight)
         return self.font_cache[key]
 
     def _parse_px(self, value, default=0):

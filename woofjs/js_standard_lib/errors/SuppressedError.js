@@ -1,0 +1,2 @@
+class SuppressedErrorConstructor extends Error {}
+globalThis.SuppressedError=SuppressedErrorConstructor;

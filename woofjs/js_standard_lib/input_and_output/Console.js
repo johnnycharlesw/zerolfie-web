@@ -1,5 +1,12 @@
 
 class Console{
+    constructor(){
+        this._timers = {};
+        this._counters = {};
+        this._groupLevel = 0;
+        this._prefix = '';
+    }
+    
     log(...args) {
         __WoofJS__.stdout.append(args.join(' ') + '\n');
     }
@@ -13,8 +20,8 @@ class Console{
     }
     
 
-    assert(conditon, ...args) {
-        if (!conditon) {
+    assert(condition, ...args) {
+        if (!condition) {
             this.error('Assertion failed:', ...args);
         }
     }
@@ -29,7 +36,7 @@ class Console{
     }
 
     dirxml(obj) {
-        this.log(JSON.stringify(obj, null, 2));
+        this.dir(obj);
     }
 
     table(obj) {

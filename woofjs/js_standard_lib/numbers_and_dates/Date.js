@@ -135,6 +135,7 @@ class Date {
         return isoString;
     }
 
+
     // UTC methods
     getUTCFullYear() {
         return this.getFullYear();
@@ -173,13 +174,3 @@ class Date {
 
 }
 
-/*
-// Usage test
-let d = new _Date();
-let otherEngineDateKeys=Object.keys(Date.prototype);
-Object.keys(d).forEach(key => {
-    if (otherEngineDateKeys.includes(key)) {
-        console.log(`Date object key "${key}" exists in other engines' Date objects, implemented successfully.`);
-    }
-})
-*/
