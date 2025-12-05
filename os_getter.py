@@ -21,5 +21,5 @@ print(f"User-Agent OS Version: {ua_os_version}")
 os_info = platform.platform()
 print(f"Detailed OS Info: {os_info}")
 
-ua=f"Mozilla/5.0 ({ua_os_name} {ua_os_version}) Python/{platform.python_version()} {platform.python_implementation()}/{platform.python_version()} ZerolfieWeb/0.0.2"
+ua=f"Mozilla/5.0 ({ua_os_name} {ua_os_version}) Python/{platform.python_version()} {platform.python_implementation()}/{platform.python_version()} ZerolfieWeb/0.0.2 (PyBark; like Gecko; not like Chrome and Edge and Opera and Brave and Vivaldi)"
 print(f"User-Agent: {ua}")

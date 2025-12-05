@@ -3,5 +3,7 @@ class JSON {
         throw new TypeError("The JSON class is not intended to be used to create objects.");
     }
 
-    parse()
+    parse(string) {
+        __WoofJS__.parseJSON(string)
+    }
 }

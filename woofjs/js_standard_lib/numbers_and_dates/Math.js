@@ -1,4 +1,4 @@
-class Math {
+class Math { // Manufacture the calculator
     E = 2.718281828459045;
     PI = 3.141592653589793;
     LOG10E = 0.4342944819032518;
@@ -9,7 +9,9 @@ class Math {
     SQRT2 = 1.4142135623730951;
 
     constructor(){
-        throw TypeError("Math is a builtin class that is not supposed to be used on objects.");
+        this.constructor = ()=>{
+            throw TypeError("Math is a builtin class that is not supposed to be used on objects.");
+        }
     }
 
     exp(x){
@@ -221,10 +223,6 @@ class Math {
         return 0 - num;
     }
 
-    _woofJS_isInteger(num){
-        return (num == this.trunc(num));
-    }
-
     __woofJS_unexponent(exponented,x,y){
         let unexponented=exponented;
         for (let i=0; i<y; i++){
@@ -235,3 +233,5 @@ class Math {
 
     
 }
+
+globalThis.Math = Object.freeze(new Math()); // Throw the calculator into globalThis

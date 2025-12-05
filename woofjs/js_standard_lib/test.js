@@ -78,7 +78,10 @@ catch (e) {
 
 // WoofJS API is internal, but this is a userspace test file, so we should not be able to access it.
 try {
-    if (__WoofJS__) printStatusCheck("WoofJS API is not accessible in userspace", false)
+    if (__WoofJS__) printStatusCheck("WoofJS API is not accessible in userspace", false);
 } catch (e) {
-    printStatusCheck("WoofJS API is not accessible in userspace", true)
+    printStatusCheck("WoofJS API is not accessible in userspace", true);
 }
+
+// ASI check
+printStatusCheck("Automatic semicolon insertion", true)

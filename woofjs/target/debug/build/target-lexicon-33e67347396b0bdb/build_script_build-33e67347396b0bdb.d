@@ -1,0 +1,8 @@
+D:\John's files\zerolfie-web\zerolfie-web\woofjs\target\debug\build\target-lexicon-33e67347396b0bdb\build_script_build-33e67347396b0bdb.d: C:\Users\science\ fair\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\target-lexicon-0.13.3\build.rs C:\Users\science\ fair\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\target-lexicon-0.13.3\src/data_model.rs C:\Users\science\ fair\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\target-lexicon-0.13.3\src/triple.rs C:\Users\science\ fair\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\target-lexicon-0.13.3\src/targets.rs
+
+D:\John's files\zerolfie-web\zerolfie-web\woofjs\target\debug\build\target-lexicon-33e67347396b0bdb\build_script_build-33e67347396b0bdb.exe: C:\Users\science\ fair\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\target-lexicon-0.13.3\build.rs C:\Users\science\ fair\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\target-lexicon-0.13.3\src/data_model.rs C:\Users\science\ fair\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\target-lexicon-0.13.3\src/triple.rs C:\Users\science\ fair\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\target-lexicon-0.13.3\src/targets.rs
+
+C:\Users\science\ fair\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\target-lexicon-0.13.3\build.rs:
+C:\Users\science\ fair\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\target-lexicon-0.13.3\src/data_model.rs:
+C:\Users\science\ fair\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\target-lexicon-0.13.3\src/triple.rs:
+C:\Users\science\ fair\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\target-lexicon-0.13.3\src/targets.rs:

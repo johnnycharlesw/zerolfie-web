@@ -1,5 +1,4 @@
 class ObjectConstructor {
-    prototype = null;
     #keys_ = [];
     #values_ = [];
     constructor(value = null) {
