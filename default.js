@@ -8,6 +8,11 @@
         modernVersionOfElement.innerHTML=element.innerHTML;
         element.replaceWith(modernVersionOfElement);
     });
+
+    // Replace acronym elements with abbr equivalents
+    document.querySelectorAll("acronym").forEach(element => {
+        
+    });
     
 })();
 // Apply CSS for deprecated elements in real time

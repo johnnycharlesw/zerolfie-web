@@ -3,17 +3,19 @@ name = "woofjs"
 version = "0.1.0"
 edition = "2024"
 
-[lib]
-crate-type = ["cdylib"]
-
 [dependencies]
 pyo3 = "0.26.0"
 lalrpop-util = "0.19"
 rand = "0.8"
 regex = "1"
+wasmtime = "39.0.1"
 
 [build-dependencies]
 lalrpop = "0.19"
 
 [lib]
 path = "lib.rs"
+crate-type = ["cdylib"]
+
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld"  # Use LLVM's linker (faster, fewer PDB issues)
