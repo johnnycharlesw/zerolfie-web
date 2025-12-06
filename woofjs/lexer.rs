@@ -1,8 +1,9 @@
 use logos::Lexer;
-use crate::token::token;
+
+use crate::token::Token;
 
 pub struct LexerWrapper<'source> {
-    inner: Lexer<'source, Token>,
+    pub inner: Lexer<'source, Token>,
 }
 
 impl<'source> Iterator for LexerWrapper<'source> {

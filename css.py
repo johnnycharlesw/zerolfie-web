@@ -39,10 +39,11 @@ class CSSMediaRule:
         self.rules = rules
 
 class CSSStyleSheet:
-    def __init__(self):
+    def __init__(self, isPrinting: bool):
         self.rules: List[CSSRule] = []
         self.media_rules: List[CSSMediaRule] = []
         self.imports: List[str] = []
+        self.is_printing = isPrinting
         
     def add_rule(self, rule: 'CSSRule'):
         self.rules.append(rule)
@@ -60,7 +61,7 @@ class CSSStyleSheet:
         specificity_scores: Dict[str, Tuple[int, int, int, int]] = {}
         
         if media_context is None:
-            media_context = default_media_context()
+            media_context = default_media_context(self.is_printing)
         
         # Collect custom properties from :root (base + matching media)
         vars_map = self._collect_root_custom_properties(media_context)
@@ -971,7 +972,7 @@ def parse_css(css_text: str) -> CSSStyleSheet:
     return parser.parse()
 
 # Media context helpers
-def default_media_context() -> Dict[str, Any]:
+def default_media_context(is_printing: bool) -> Dict[str, Any]:
     """Build a default media context using darkdetect if available.
     Returns keys: 'prefers-color-scheme' ('dark'|'light'), 'media-type' ('screen').
     """
@@ -982,9 +983,14 @@ def default_media_context() -> Dict[str, Any]:
     except Exception:
         # Default to light if detection is unavailable
         scheme = 'light'
+    if is_printing:
+        media_type="print"
+    else:
+        media_type='screen'
+    
     return {
         'prefers-color-scheme': scheme,
-        'media-type': 'screen',
+        'media-type': media_type,
     }
 
 def test_css_parser():

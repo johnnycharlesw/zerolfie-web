@@ -210,7 +210,7 @@ class ZerolfieWebView:
                 self.render_page(page)
             else:
                 self.root.after(30, lambda p=page: self.render_page(p))
-            self.display_css_info(page)
+            #self.display_css_info(page)
             self.display_links(page)
             self.display_page_info(page)
         else:
@@ -439,6 +439,7 @@ class PageRenderer:
             except Exception:
                 pass
             if title_text:
+                self.title_text=title_text
                 debug_font = self._get_font(size=18, weight='bold')
                 canvas.create_text(x, y, text=title_text, anchor='nw', font=debug_font, fill='#111')
                 y += debug_font.metrics('linespace') + 8
@@ -456,18 +457,44 @@ class PageRenderer:
             base_size = 24
         elif tag == 'h3':
             base_size = 20
+
+        # Handle rendering
+
+        # Step 1: Deal with font sizes and colors
         size = self._parse_px(styles.get('font-size'), base_size)
         weight = 'bold' if str(styles.get('font-weight', '')).lower() in ('bold', '700', '800', '900') else 'normal'
         color = self._parse_color(styles.get('color'), '#000000')
         bg = self._parse_color(styles.get('background-color'), None)
-        margin_top = self._parse_px(styles.get('margin-top'), 0)
-        margin_bottom = self._parse_px(styles.get('margin-bottom'), 8)
-        margin_left = self._parse_px(styles.get('margin-left'), 0)
-        margin_right = self._parse_px(styles.get('margin-right'), 0)
-        padding_top = self._parse_px(styles.get('padding-top'), 0)
-        padding_bottom = self._parse_px(styles.get('padding-bottom'), 0)
-        padding_left = self._parse_px(styles.get('padding-left'), 0)
-        padding_right = self._parse_px(styles.get('padding-right'), 0)
+
+        # Step 2: Deal with margins
+
+        # Deal with margin shorthand
+        if styles.get("margin") != None:
+            margin_top = self._parse_px(styles.get('margin'), 0)
+            margin_bottom = self._parse_px(styles.get('margin'), 8)
+            margin_left = self._parse_px(styles.get('margin'), 0)
+            margin_right = self._parse_px(styles.get('margin'), 0)
+        else:
+            # Deal with seperate margins
+            margin_top = self._parse_px(styles.get('margin-top'), 0)
+            margin_bottom = self._parse_px(styles.get('margin-bottom'), 8)
+            margin_left = self._parse_px(styles.get('margin-left'), 0)
+            margin_right = self._parse_px(styles.get('margin-right'), 0)
+
+        # Step 3: Handle padding
+
+        # Deal with padding shorthand
+        if styles.get("padding") != None:
+            padding_top = self._parse_px(styles.get('padding'), 0)
+            padding_bottom = self._parse_px(styles.get('padding'), 0)
+            padding_left = self._parse_px(styles.get('padding'), 0)
+            padding_right = self._parse_px(styles.get('padding'), 0)
+        else:
+            padding_top = self._parse_px(styles.get('padding-top'), 0)
+            padding_bottom = self._parse_px(styles.get('padding-bottom'), 0)
+            padding_left = self._parse_px(styles.get('padding-left'), 0)
+            padding_right = self._parse_px(styles.get('padding-right'), 0)
+        
 
         x0 = x + margin_left
         y0 = y + margin_top

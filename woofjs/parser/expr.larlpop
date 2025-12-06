@@ -46,3 +46,8 @@ VariableDefinition: VariableDefinition = {
     }
 };
 
+StatementEnding: StatementEnding = {
+    if matches!(Semicolon) {
+        
+    }
+}

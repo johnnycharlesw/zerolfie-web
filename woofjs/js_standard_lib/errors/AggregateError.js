@@ -3,7 +3,7 @@ class AggregateErrorConstructor extends Error {
     errors = [];
 
     __WoofJS_addError(error){
-        this.errors.concat(error);
+        this.errors.push(error);
     }
 }
 globalThis.AggregateError = AggregateErrorConstructor;

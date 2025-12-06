@@ -4,6 +4,10 @@ class JSON {
     }
 
     parse(string) {
+<<<<<<< HEAD
         return __WoofJS__.parseJSON(string);
+=======
+        __WoofJS__.parseJSON(string)
+>>>>>>> a639a9f0acb2e945d43bd8855ea344d1bc6d8d66
     }
 }

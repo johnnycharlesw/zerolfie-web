@@ -1,0 +1,19 @@
+; selectors
+blocks = *block
+block = selector open_block rules close_block
+selector = selector_prefix *CHAR
+selector_prefix = "." / "#" / ""
+
+; rules and properties
+rules = 1*rule
+rule = property ":" *WSP ";" *LWSP
+
+; @blocks
+at_block = "@" at_selector open_block blocks  close_block
+
+; Strings
+quote = singlequote / doublequote
+singlequote = "'"
+doublequote = '"'
+
+string = quote *CHAR quote

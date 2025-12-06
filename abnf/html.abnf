@@ -1,0 +1,16 @@
+left_angle_bracket = "<"
+right_angle_bracket = ">"
+newline = (CR / LF / CRLF)
+
+html_document = doctype *(WSP / newline) tags
+
+doctype = left_angle_bracket "!DOCTYPE" WSP "html" 0*1legacy-dtd-reference right_angle_bracket
+
+tag = tag_open *(tag / text_leaf) tag_close
+
+tag_open = left_angle_bracket *(WSP / VCHAR) right_angle_bracket
+
+tag_close = left_angle_bracket "/" *(WSP / VCHAR) right_angle_bracket
+
+text_leaf = 0*0left_angle_bracket *(WSP / VCHAR) 0*0right_angle_bracket
+

@@ -311,7 +311,7 @@ class HTMLDomInitializer:
         self.current_element = None
         self.stack = []
         self.stylesheets = stylesheets or []
-        self.master_stylesheet = css.CSSStyleSheet()
+        self.master_stylesheet = css.CSSStyleSheet(False)
         
         # Self-closing tags
         self.self_closing_tags = {
