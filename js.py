@@ -150,33 +150,6 @@ def call(func_name: str, *args: Any) -> Any:
     return _invoke_eval(js)
 
 
-# Backward-compatible demo similar to earlier behavior
-# Keeps the original HELLO WORLD! example working
-
-def demo() -> None:
-    """Demonstration: define and call a JS function."""
-    define("upcase", "(s) => String(s).toUpperCase()")
-    print(call("upcase", "hello world!"))
-
-
-# If someone still calls init() expecting the previous sample to run,
-# keep a small demonstration here as well. Comment out if undesired.
-
-def _legacy_demo_if_needed():
-    try:
-        # demonstrate the context works, but do not fail hard if anything is off
-        define("upcase", "(s) => String(s).toUpperCase()")
-        print(call("upcase", "hello world!"))
-    except Exception:
-        pass
-
-
-# Maintain previous side effect on init call for compatibility
-# Remove the next two lines if you prefer init() to be side-effect free
-# and only perform environment setup.
-# init()  # ensure initialized
-# _legacy_demo_if_needed()
-
 # If run as an entry point, run an REPL
 
 def repl():

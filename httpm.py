@@ -286,6 +286,7 @@ def cleanup_connections():
     # Ensure we clear the global metadata list rather than rebinding a local variable
     connections_metadata.clear()
     print("Cleaned up")
+    
 
 
 if __name__ == "__main__":

@@ -12,7 +12,8 @@ import cProfile, io, pstats
 class ZerolfieWebView:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("🌐 Zerolfie Web Browser")
+        self.root.iconphoto(False, tk.PhotoImage('zerolfiw-web-logo.png'))
+        self.root.title("Zerolfie Web")
         self.root.geometry("1200x800")
         
         # Initialize browser engine
