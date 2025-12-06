@@ -145,6 +145,30 @@ def _about_url_request(url: str, method: str):
             "content": not_found
         }
 
+def _res_url_request(url: str, method: str):
+    key = _parse_about_key(url)
+    file_path = f"{key}"
+    try:
+        with open(file_path, "rb") as fd:
+            content = fd.read()
+            return {
+                "status": 200,
+                "reason": "OK",
+                "headers": [("ZerolfieWeb-Internal-WebPage", "True"), ("Content-Type", _guess_mime_type(file_path))],
+                "content": content
+            }
+    except FileNotFoundError:
+        not_found = (
+            b"<h1>404 Not Found</h1>\n"
+            b"<p>The about: URL you requested could not be found.</p>\n"
+        )
+        return {
+            "status": 404,
+            "reason": "Not Found",
+            "headers": [("ZerolfieWeb-Internal-WebPage", "True"), ("Content-Type", _guess_mime_type(path=file_path)+"; charset=utf8")],
+            "content": not_found
+        }
+
 
 def _is_relative_or_path(url_str: str) -> bool:
     p = urlparse(url_str)
@@ -201,6 +225,12 @@ def request(url: str = "http://localhost/index.php/Main_Page", port: Optional[in
 
     # Handle about: URLs immediately
     if url_parsed.scheme == "about" or url.startswith("about:"):
+        resp = _about_url_request(url=url, method=method)
+        _last_url = url
+        return resp
+
+    # Handle res: URLs immediately
+    if url_parsed.scheme == "res" or url.startswith("res:"):
         resp = _about_url_request(url=url, method=method)
         _last_url = url
         return resp

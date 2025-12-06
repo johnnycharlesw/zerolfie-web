@@ -161,8 +161,8 @@ class WebBrowser:
             
             # Load CSS stylesheets
             if self.current_page.stylesheets:
-                print(f"🎨 Loading {len(self.current_page.stylesheets)} stylesheets...")
-                self._load_css_stylesheets(self.current_page.stylesheets, base_url=final_url)
+                print(f"🎨 Loading {len(self.current_page.stylesheets)+1} stylesheets...")
+                self._load_css_stylesheets(self.current_page.stylesheets + ["res:default.css"], base_url=final_url)
 
             # Initialize and run JavaScript after CSS (basic behavior)
             if self.current_page.scripts:

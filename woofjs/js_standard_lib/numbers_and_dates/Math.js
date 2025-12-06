@@ -213,6 +213,7 @@ class Math {
         return __WoofJS__.roundToNearest16BitHalfPrecision(doubleFloat);
     }
 
+
     _woofJS_convertBase(x,base){
         return parseInt(x.toString(),base);
     }
