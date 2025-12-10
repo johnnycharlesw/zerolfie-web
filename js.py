@@ -1,4 +1,5 @@
 import pythonmonkey as pm
+import pybark.js.woofjs as woofjs
 import sys
 import os
 import threading
@@ -10,10 +11,13 @@ import json as _json
 
 _thread_local = threading.local()
 
+context = None
+
 
 def _invoke_eval(js_source: str):
-    """Evaluate JavaScript source using PythonMonkey and return the result."""
-    return pm.eval(js_source)
+    """Evaluate JavaScript source using WoofJS and return the result."""
+    if context:
+        return context.eval(js_source)
 
 
 class _Console(object):
@@ -27,10 +31,6 @@ class _Console(object):
         print(*args, file=sys.stderr)
 
 
-def _use_ctx():
-    """Deprecated: no JS context manager needed with PythonMonkey."""
-    raise RuntimeError("Direct context usage is not supported; use run_code/define/call.")
-
 
 def init(globals: Optional[Mapping[str, Any]] = None) -> None:
     """
@@ -41,6 +41,9 @@ def init(globals: Optional[Mapping[str, Any]] = None) -> None:
     """
     if not globals:
         return
+
+    context = woofjs.WoofJsRuntime(True)
+
     import json
     assignments = []
     for key, value in globals.items():
@@ -91,9 +94,9 @@ def run_code_isolated(source: str, timeout_ms: int = 3000) -> bool:
     runner = (
         "import sys, json\n"
         "try:\n"
-        "    import pythonmonkey as pm\n"
+        "    import js\n"
         "    code = sys.stdin.read()\n"
-        "    pm.eval(code)\n"
+        "    js.run_code(code)\n"
         "    print(json.dumps({'ok': True}))\n"
         "except Exception as e:\n"
         "    print(json.dumps({'ok': False, 'error': str(e)}))\n"

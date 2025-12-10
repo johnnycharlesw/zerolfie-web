@@ -21,12 +21,17 @@ lalrpop_mod!(pub parser);
 impl Expr {
     pub fn eval(&self) -> Result<i64, String> {
         let runtime = Runtime::new();
+        eval_in_context(runtime);
+    }
+
+    pub fn eval_in_context(&self, runtime) {
         match runtime.eval_expr(self, None) {
             Ok(val) => Ok(val.to_number() as i64),
             Err(e) => Err(e),
         }
     }
 }
+
 
 #[pyfunction]
 fn eval_expr(input: &str) -> PyResult<i64> {
@@ -48,6 +53,7 @@ fn eval_expr(input: &str) -> PyResult<i64> {
 fn woofjs(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<WoofJsApi>()?;
     m.add_class::<host::WoofJsIoStream>()?;
+    m.add_class::<Runtime>();
     m.add_function(wrap_pyfunction!(eval_expr, m)?)?;
     Ok(())
 }

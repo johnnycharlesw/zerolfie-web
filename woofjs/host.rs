@@ -1,4 +1,7 @@
-use std::time::{SystemTime, UNIX_EPOCH};
+
+
+// WebAssembly stuff
+// use std::time::{SystemTime, UNIX_EPOCH};
 
 use pyo3::prelude::*;
 
@@ -215,6 +218,7 @@ impl WoofJsApi {
         }
         callback.call0(py).map(|_| ())
     }
+
 }
 
 

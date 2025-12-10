@@ -83,58 +83,6 @@ class ZerolfieWebView:
         self.page_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.page_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.page_frame.pack(fill=tk.BOTH, expand=True)
-        
-        """
-        # DOM view tab
-        self.dom_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.dom_frame, text="🌳 DOM")
-        self.dom_display = scrolledtext.ScrolledText(
-            self.dom_frame, 
-            wrap=tk.WORD, 
-            font=('Consolas', 9),
-            bg='#f0f0f0'
-        )
-        self.dom_display.pack(fill=tk.BOTH, expand=True)
-        
-        # CSS view tab
-        self.css_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.css_frame, text="🎨 CSS")
-        self.css_display = scrolledtext.ScrolledText(
-            self.css_frame, 
-            wrap=tk.WORD, 
-            font=('Consolas', 9),
-            bg='#f8f8f8'
-        )
-        self.css_display.pack(fill=tk.BOTH, expand=True)
-        
-        # Links view tab
-        self.links_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.links_frame, text="🔗 Links")
-        
-        # Links listbox with scrollbar
-        self.links_list_frame = ttk.Frame(self.links_frame)
-        self.links_listbox = tk.Listbox(self.links_list_frame, font=('Inter', 10))
-        self.links_scrollbar = ttk.Scrollbar(self.links_list_frame, orient=tk.VERTICAL, command=self.links_listbox.yview)
-        self.links_listbox.configure(yscrollcommand=self.links_scrollbar.set)
-        
-        self.links_listbox.bind('<Double-Button-1>', self.follow_selected_link)
-        
-        # Links frame layout
-        self.links_list_frame.pack(fill=tk.BOTH, expand=True)
-        self.links_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.links_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        # Info tab
-        self.info_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.info_frame, text="📊 Info")
-        self.info_display = scrolledtext.ScrolledText(
-            self.info_frame, 
-            wrap=tk.WORD, 
-            font=('Consolas', 9),
-            bg='#fafafa'
-        )
-        self.info_display.pack(fill=tk.BOTH, expand=True)
-        """
         self.notebook.pack(fill=tk.BOTH, expand=True)
 
         print(f"Canvas size: {self.page_canvas.winfo_width()}x{self.page_canvas.winfo_height()}")
