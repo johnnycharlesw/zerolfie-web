@@ -560,26 +560,37 @@ class PageRenderer:
         # Compute border
         border = Border()
         if styles.get("border"):
-            pass
-        else:
-            for border_part_name in ["top", "right", "bottom", "left"]:
-                shorthand = f"border-{border_part_name}"
-                if styles.get(shorthand):
-                    shorthand_value = styles.get("shorthand")
-                    reader = csv.reader(shorthand_value, delimeter=" ")
-                    border.pieces[border_part_name].width = reader[0]
-                    border.pieces[border_part_name].style = reader[1]
-                    border.pieces[border_part_name].color = reader[3]
-                else:
-                    if styles.get(shorthand+"-color"):
-                        border.pieces[border_part_name].color=styles.get(shorthand+"-color")
+            shorthand = "border"
+            shorthand_value = styles.get(shorthand)
+            reader = csv.reader(shorthand_value, delimeter=" ")
+                    
+            for property_ in ["width", "style", "color"]:
+                for border_part_name in ["top", "right", "bottom", "left"]:
+                    styles.update({
+                        f"border-{border_part_name}-{property}"
+                    })
 
-                    if styles.get(shorthand+"-style"):
-                        border.pieces[border_part_name].style=styles.get(shorthand+"-style")
-                    
-                    if styles.get(shorthand+"-width"):
-                        border.pieces[border_part_name].color=styles.get(shorthand+"-width")
-                    
+        
+        for border_part_name in ["top", "right", "bottom", "left"]:
+            shorthand = f"border-{border_part_name}"
+            if styles.get(shorthand):
+                shorthand_value = styles.get(shorthand)
+                reader = csv.reader(shorthand_value, delimeter=" ")
+                border.pieces[border_part_name].width = reader[0]
+                border.pieces[border_part_name].style = reader[1]
+                border.pieces[border_part_name].color = reader[3]
+            else:
+                if styles.get(shorthand+"-color"):
+                    border.pieces[border_part_name].color=styles.get(shorthand+"-color")
+
+                if styles.get(shorthand+"-style"):
+                    border.pieces[border_part_name].style=styles.get(shorthand+"-style")
+                
+                if styles.get(shorthand+"-width"):
+                    border.pieces[border_part_name].color=styles.get(shorthand+"-width")
+
+        # Draw the border
+        
 
         return element_bottom + margin_bottom
 
