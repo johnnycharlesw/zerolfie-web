@@ -5,6 +5,8 @@ import dnsm
 import sslm
 from typing import Optional, Tuple, List
 
+ua = os_getter.gen_user_agent()
+
 connections: List = []
 connections_metadata: List[dict] = []
 # Tracks the last successfully requested URL to help resolve relative paths
@@ -47,7 +49,7 @@ def _request(url: str, method: str, connection_id: int):
         return None
 
     headers = {
-        "User-Agent": os_getter.ua
+        "User-Agent": ua
     }
     # Extract path from URL for the request (fragments must NOT be sent)
     parsed_url = urlparse(url)

@@ -5,5 +5,4 @@ darkdetect
 dnspython
 pipdeptree
 psutil
-pythonmonkey
 pillow>=10

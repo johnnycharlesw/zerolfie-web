@@ -539,12 +539,12 @@ class CSSParser:
         self.tokens = []
         self.position = 0
         
-    def parse(self) -> CSSStyleSheet:
+    def parse(self, isPrinting) -> CSSStyleSheet:
         """Parse CSS text into a stylesheet"""
         self.tokens = self.tokenizer.tokenize()
         self.position = 0
         
-        stylesheet = CSSStyleSheet()
+        stylesheet = CSSStyleSheet(isPrinting)
         
         while not self._is_eof():
             self._consume_whitespace()
@@ -965,11 +965,14 @@ class CSSParser:
             pos += 1
         self.position = pos
 
+    def import_css_media_handlers():
+        pass
+
 @lru_cache(maxsize=8)
-def parse_css(css_text: str) -> CSSStyleSheet:
+def parse_css(css_text: str, isPrinting: bool) -> CSSStyleSheet:
     """Parse CSS text and return a stylesheet object"""
     parser = CSSParser(css_text)
-    return parser.parse()
+    return parser.parse(isPrinting)
 
 # Media context helpers
 def default_media_context(is_printing: bool) -> Dict[str, Any]:
@@ -1017,14 +1020,24 @@ def test_css_parser():
         max-width: 800px;
         margin: 0 auto;
     }
+
+    @media print {
+        header, footer, aside {
+            display:none;
+        }
+    }
     
     div > p {
         margin-bottom: 10px;
     }
     """
-    
+    import sys
+    if "--printCSS" in sys.argv:
+        isPrinting=True
+    else:
+        isPrinting=False
     print("Testing CSS Parser...")
-    stylesheet = parse_css(css_text)
+    stylesheet = parse_css(css_text, isPrinting)
     
     print(f"Parsed {len(stylesheet.rules)} CSS rules")
     for i, rule in enumerate(stylesheet.rules):
@@ -1033,6 +1046,7 @@ def test_css_parser():
             print(f"  Selectors: {[f'{p.type}:{p.value}' for p in selector.parts]}")
         for prop, value in rule.declarations.items():
             print(f"  {prop}: {value}")
+
 
 if __name__ == "__main__":
     test_css_parser()
