@@ -7,6 +7,7 @@ from typing import Optional
 import onlinehtml
 import htmlm
 import psutil, os
+import csv
 import cProfile, io, pstats
 
 class ZerolfieWebView:
@@ -331,6 +332,25 @@ def main():
     print(stream.getvalue())
 
 # --- Minimal layout/paint engine ---
+
+class BorderPiece:
+    def __init__(self, name):
+        self.name=name
+        self.style = "none"
+        self.width = "0px"
+        self.color = "#000000"
+
+class Border:
+    def __init__(self, node):
+        self.pieces = {
+            "top": BorderPiece("top"),
+            "right": BorderPiece("right"),
+            "bottom": BorderPiece("bottom"),
+            "left": BorderPiece("left")
+        }
+        self.radius = "0px"
+        
+
 class PageRenderer:
     def __init__(self, tk_root):
         self.tk_root = tk_root
@@ -536,6 +556,30 @@ class PageRenderer:
             marker_x = content_x - (marker_width + marker_gap)
             marker_y = content_y
             canvas.create_text(marker_x, marker_y, text=marker_text, anchor='nw', font=font, fill=color)
+
+        # Compute border
+        border = Border()
+        if styles.get("border"):
+            pass
+        else:
+            for border_part_name in ["top", "right", "bottom", "left"]:
+                shorthand = f"border-{border_part_name}"
+                if styles.get(shorthand):
+                    shorthand_value = styles.get("shorthand")
+                    reader = csv.reader(shorthand_value, delimeter=" ")
+                    border.pieces[border_part_name].width = reader[0]
+                    border.pieces[border_part_name].style = reader[1]
+                    border.pieces[border_part_name].color = reader[3]
+                else:
+                    if styles.get(shorthand+"-color"):
+                        border.pieces[border_part_name].color=styles.get(shorthand+"-color")
+
+                    if styles.get(shorthand+"-style"):
+                        border.pieces[border_part_name].style=styles.get(shorthand+"-style")
+                    
+                    if styles.get(shorthand+"-width"):
+                        border.pieces[border_part_name].color=styles.get(shorthand+"-width")
+                    
 
         return element_bottom + margin_bottom
 

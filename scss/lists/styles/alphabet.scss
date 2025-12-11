@@ -1,0 +1,38 @@
+@mixin alphabet_list_styles($is_uppercase, $is_latin_name) {
+    $lower-alpha: a b c d e f g h i j k l m n o p q r s t u v w x y z;
+    $upper-alpha: A B C D E F G H I J K L M N O P Q R S T U V W X Y Z;
+    @if ($is_uppercase){
+        @if ($is_latin_name) {
+            $name: "upper-latin";
+        }
+        @else {
+            $name: "upper-alpha";
+        }
+
+    }
+    @else {
+        @if ($is_latin_name){
+            $name: "lower-latin";
+        }
+        @else {
+            $name: "lower-alpha";
+        }
+    }
+
+    @if ($is_uppercase){
+        $alpha: $upper-alpha;
+    }
+    @else {
+        $alpha: $lower-alpha;
+    }
+    @counter-style $name {
+        system: alphabetic;
+        symbols: $alpha;
+        suffix: ". ";
+    }
+}
+
+@include alphabet_list_styles(true, true);
+@include alphabet_list_styles(false, true);
+@include alphabet_list_styles(true, false);
+@include alphabet_list_styles(false, false);

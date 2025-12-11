@@ -1,4 +1,4 @@
-"""Zerolfie Web Browser - Main package"""
+"""PyBark - Main package"""
 
 __version__ = "0.0.1"
 

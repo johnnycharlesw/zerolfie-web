@@ -1,0 +1,16 @@
+// _greek.scss partial
+
+$lower-greek: α β γ δ ε ζ η θ ι κ λ μ ν ξ ο π ρ σ τ υ φ χ ψ ω;
+$upper-greek: Α Β Γ Δ Ε Ζ Η Θ Ι Κ Λ Μ Ν Ξ Ο Π Ρ Σ Τ Υ Φ Χ Ψ Ω;
+
+@counter-style lower-greek {
+  system: alphabetic;
+  symbols: $lower-greek;
+  suffix: ". ";
+}
+
+@counter-style upper-greek {
+  system: alphabetic;
+  symbols: $upper-greek;
+  suffix: ". ";
+}

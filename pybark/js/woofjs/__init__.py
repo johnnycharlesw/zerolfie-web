@@ -171,9 +171,6 @@ class WoofJsRuntime:
         Returns:
             The result of evaluating the code
         """
-        # For now, this is a placeholder
-        # Once WoofJS can execute full JS (not just expressions), implement here
-        # For now, fall back to PythonMonkey or return a placeholder
         try:
             # Try using the Rust expression evaluator
             if hasattr(woofjs, 'eval_expr'):

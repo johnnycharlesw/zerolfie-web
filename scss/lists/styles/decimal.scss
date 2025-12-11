@@ -1,0 +1,21 @@
+@mixin decimal_list_styles($has_leading_zero){
+  @if $has_leading_zero {
+    $name: decimal-leading-zero;
+  }
+  @else {
+    $name: decimal;
+  }
+  @counter-style $name {
+    system: numeric;
+    @if $has_leading_zero {
+      symbols: "1" "2" "3" "4" "5" "6" "7" "8" "9";
+    }
+    @else {
+      symbols: "01" "02" "03" "04" "05" "06" "07" "08" "09";
+    }
+    suffix: ". ";
+  }
+}
+
+@include decimal_list_styles(false);
+@include decimal_list_styles(true);
