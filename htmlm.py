@@ -24,6 +24,12 @@ class HTMLElement:
     def setAttribute(self, name: str, value):
         self.attributes[name.lower()] = value
         
+    def hasAttribute(self, name: str):
+        try:
+            value = self.getAttribute(name)
+            return True
+        except Exception:
+            return False
     def removeAttribute(self, name: str):
         key = name.lower()
         if key in self.attributes:
@@ -494,7 +500,7 @@ class HTMLDomInitializer:
         # Load external stylesheets
         for stylesheet_content in self.stylesheets:
             try:
-                parsed_css = css.parse_css(stylesheet_content)
+                parsed_css = css.parse_css(stylesheet_content, false)
                 self._merge_stylesheet(parsed_css)
             except Exception as e:
                 print(f"Error parsing CSS: {e}")
@@ -505,7 +511,7 @@ class HTMLDomInitializer:
             style_content = style_element.textContent
             if style_content:
                 try:
-                    parsed_css = css.parse_css(style_content)
+                    parsed_css = css.parse_css(style_content, false)
                     self._merge_stylesheet(parsed_css)
                 except Exception as e:
                     print(f"Error parsing style tag: {e}")

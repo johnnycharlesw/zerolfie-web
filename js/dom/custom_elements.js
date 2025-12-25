@@ -1,13 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 undefined;
-define(DOMString, name, CustomElementConstructor, constructor, optional, ElementDefinitionOptions, options = {});
+define(string, name, CustomElementConstructor, constructor, optional, ElementDefinitionOptions, options = {});
 (CustomElementConstructor);
 or;
 undefined;
-get(DOMString, name);
-DOMString ? getName(CustomElementConstructor, constructor) : ;
-Promise < CustomElementConstructor > whenDefined(DOMString, name);
+get(string, name);
+string ? getName(CustomElementConstructor, constructor) : ;
+Promise < CustomElementConstructor > whenDefined(string, name);
 [CEReactions];
 undefined;
 upgrade(Node, root);
@@ -20,7 +20,7 @@ CustomElementConstructor = HTMLElement();
 dictionary;
 ElementDefinitionOptions;
 {
-    DOMString;
+    string;
     ;
 }
 ;

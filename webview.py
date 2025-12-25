@@ -6,14 +6,17 @@ import webbrowser
 from typing import Optional
 import onlinehtml
 import htmlm
+import base64
 import psutil, os
+import httpm
 import csv
 import cProfile, io, pstats
+from PIL import Image, ImageTk
 
 class ZerolfieWebView:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.iconphoto(False, tk.PhotoImage('zerolfiw-web-logo.png'))
+        #self.root.iconphoto(False, tk.PhotoImage('zerolfie-web-logo.png'))
         self.root.title("Zerolfie Web")
         self.root.geometry("1200x800")
         
@@ -160,9 +163,6 @@ class ZerolfieWebView:
                 self.render_page(page)
             else:
                 self.root.after(30, lambda p=page: self.render_page(p))
-            #self.display_css_info(page)
-            self.display_links(page)
-            self.display_page_info(page)
         else:
             self.status_var.set("Failed to load page")
             # Clear canvas when no page content is available
@@ -191,7 +191,6 @@ class ZerolfieWebView:
     def _format_html_for_display(self, element, indent=0):
         """Deprecated helper kept for reference."""
         return ""
-    
     
     def display_css_info(self, page):
         """Display CSS information"""
@@ -236,37 +235,6 @@ class ZerolfieWebView:
                 for child in element.children:
                     self._add_element_styles_to_info(child, buf, depth + 1)
 
-    def display_links(self, page):
-        """Display page links"""
-        self.links_listbox.delete(0, tk.END)
-        
-        if page and page.links:
-            for i, link in enumerate(page.links):
-                display_text = f"{i+1}. {link['text'][:50]}... -> {link['url']}"
-                self.links_listbox.insert(tk.END, display_text)
-        else:
-            self.links_listbox.insert(tk.END, "No links found on this page")
-    
-    def display_page_info(self, page):
-        """Display page information"""
-        self.info_display.delete(1.0, tk.END)
-        
-        if page:
-            info = f"📊 Page Information\n"
-            info += "=" * 50 + "\n\n"
-            
-            page_info = self.browser.get_page_info()
-            for key, value in page_info.items():
-                info += f"{key.replace('_', ' ').title()}: {value}\n"
-            
-            info += "\n" + "=" * 50 + "\n"
-            info += "Response Headers:\n\n"
-            
-            if hasattr(page, 'headers'):
-                for header_name, header_value in page.headers:
-                    info += f"{header_name}: {header_value}\n"
-            
-            self.info_display.insert(tk.END, info)
     
     def follow_selected_link(self, event):
         """Follow the selected link"""
@@ -276,6 +244,11 @@ class ZerolfieWebView:
             if link_index < len(self.current_page.links):
                 link_url = self.current_page.links[link_index]['url']
                 self.navigate_to_url(link_url)
+    
+    def follow_link(self, link: htmlm.HTMLElement):
+        """Follow the selected link"""
+        link_url = link.getAttribute('href') or self.current_page.url
+        self.navigate_to_url(link_url)
     
     def go_back(self):
         """Go back in history"""
@@ -388,30 +361,42 @@ class PageRenderer:
         total_height = self._layout_block(canvas, root_element, x, y, max_width)
         canvas.configure(scrollregion=(0, 0, viewport_width, total_height + 8))
 
+    def _calculate_margin(self, element):
+        styles = element.get_all_computed_styles() or {}
+        # Deal with margin shorthand
+        if styles.get("margin") != None:
+            margin_top = self._parse_px(styles.get('margin'), 0)
+            margin_bottom = self._parse_px(styles.get('margin'), 8)
+            margin_left = self._parse_px(styles.get('margin'), 0)
+            margin_right = self._parse_px(styles.get('margin'), 0)
+        else:
+            # Deal with seperate margins
+            margin_top = self._parse_px(styles.get('margin-top'), 0)
+            margin_bottom = self._parse_px(styles.get('margin-bottom'), 8)
+            margin_left = self._parse_px(styles.get('margin-left'), 0)
+            margin_right = self._parse_px(styles.get('margin-right'), 0)
+        return [margin_top, margin_bottom, margin_left, margin_right]
+
+    def _calculate_padding(self, element):
+        styles = element.get_all_computed_styles() or {}
+        if styles.get("padding") != None:
+            padding_top = self._parse_px(styles.get('padding'), 0)
+            padding_bottom = self._parse_px(styles.get('padding'), 0)
+            padding_left = self._parse_px(styles.get('padding'), 0)
+            padding_right = self._parse_px(styles.get('padding'), 0)
+        else:
+            padding_top = self._parse_px(styles.get('padding-top'), 0)
+            padding_bottom = self._parse_px(styles.get('padding-bottom'), 0)
+            padding_left = self._parse_px(styles.get('padding-left'), 0)
+            padding_right = self._parse_px(styles.get('padding-right'), 0)
+        return [padding_top, padding_bottom, padding_left, padding_right]
+
     def _layout_block(self, canvas, element, x, y, width):
         if not isinstance(element, htmlm.HTMLElement):
             return y
         # Skip the artificial document wrapper; render its children
         if element.tagName == 'document':
             # Optional: draw page title as sanity visibility line
-            # Find <title> text if present
-            title_text = ''
-            try:
-                for child in element.childNodes:
-                    if isinstance(child, htmlm.HTMLElement) and child.tagName == 'html':
-                        for head_child in child.childNodes:
-                            if isinstance(head_child, htmlm.HTMLElement) and head_child.tagName == 'head':
-                                for t in head_child.childNodes:
-                                    if isinstance(t, htmlm.HTMLElement) and t.tagName == 'title':
-                                        title_text = t.textContent.strip()
-                                        break
-            except Exception:
-                pass
-            if title_text:
-                self.title_text=title_text
-                debug_font = self._get_font(size=18, weight='bold')
-                canvas.create_text(x, y, text=title_text, anchor='nw', font=debug_font, fill='#111')
-                y += debug_font.metrics('linespace') + 8
             for child in element.childNodes:
                 y = self._layout_block(canvas, child, x, y, width)
             return y
@@ -437,33 +422,8 @@ class PageRenderer:
 
         # Step 2: Deal with margins
 
-        # Deal with margin shorthand
-        if styles.get("margin") != None:
-            margin_top = self._parse_px(styles.get('margin'), 0)
-            margin_bottom = self._parse_px(styles.get('margin'), 8)
-            margin_left = self._parse_px(styles.get('margin'), 0)
-            margin_right = self._parse_px(styles.get('margin'), 0)
-        else:
-            # Deal with seperate margins
-            margin_top = self._parse_px(styles.get('margin-top'), 0)
-            margin_bottom = self._parse_px(styles.get('margin-bottom'), 8)
-            margin_left = self._parse_px(styles.get('margin-left'), 0)
-            margin_right = self._parse_px(styles.get('margin-right'), 0)
-
-        # Step 3: Handle padding
-
-        # Deal with padding shorthand
-        if styles.get("padding") != None:
-            padding_top = self._parse_px(styles.get('padding'), 0)
-            padding_bottom = self._parse_px(styles.get('padding'), 0)
-            padding_left = self._parse_px(styles.get('padding'), 0)
-            padding_right = self._parse_px(styles.get('padding'), 0)
-        else:
-            padding_top = self._parse_px(styles.get('padding-top'), 0)
-            padding_bottom = self._parse_px(styles.get('padding-bottom'), 0)
-            padding_left = self._parse_px(styles.get('padding-left'), 0)
-            padding_right = self._parse_px(styles.get('padding-right'), 0)
-        
+        margin_top, margin_bottom, margin_left, margin_right = self._calculate_margin(element)
+        padding_top, padding_bottom, padding_left, padding_right = self._calculate_padding(element)
 
         x0 = x + margin_left
         y0 = y + margin_top
@@ -558,7 +518,7 @@ class PageRenderer:
             canvas.create_text(marker_x, marker_y, text=marker_text, anchor='nw', font=font, fill=color)
 
         # Compute border
-        border = Border()
+        border = Border(element)
         if styles.get("border"):
             shorthand = "border"
             shorthand_value = styles.get(shorthand)
@@ -589,10 +549,31 @@ class PageRenderer:
                 if styles.get(shorthand+"-width"):
                     border.pieces[border_part_name].color=styles.get(shorthand+"-width")
 
-        # Draw the border
         
 
         return element_bottom + margin_bottom
+
+    def _layout_image(self, canvas, element, x, y):
+        imgdata=None
+        tag=element.tagName
+        if tag == 'img' and element.hasAttribute('src'):
+            # Render the image
+            url = element.getAttribute('src')
+            if element.hasAttribute('zlfdatab64'):
+                imgdata = base64.b64decode(element.getAttribute('zlfdata64'))   
+            else:
+                img_request = httpm.request(url)
+                imgdata = bytes(request['content'])
+                element.setAttribute('zlfdatab64', base64.b64encode(imgdata))
+            image_stream = io.BytesIO(imgdata)
+            pil_image = Image.open(image_stream)
+            tk_image = ImageTk.PhotoImage(pil_image)
+            styles = element.get_all_computed_styles()
+            width = styles.get('width', pil_image.size[0])
+            height = styles.get('height', pil_image.size[1])
+            canvas.create_image(width, height)
+            return y+height
+        return y
 
     def _layout_child(self, canvas, node, x, y, width, parent_font, parent_color):
         if isinstance(node, htmlm.HTMLTextNode):

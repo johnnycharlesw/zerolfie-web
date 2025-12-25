@@ -9,7 +9,7 @@ html, body{
 }
 .container{
   max-width: 900px;
-  margin: 0 auto;
+  margin: 0;
   padding: 24px;
 }
 .brand h1{

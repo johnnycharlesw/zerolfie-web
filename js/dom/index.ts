@@ -13,9 +13,9 @@ interface Node : EventTarget {
   const unsigned short DOCUMENT_FRAGMENT_NODE = 11;
   const unsigned short NOTATION_NODE = 12; // legacy
   readonly unsigned short nodeType;
-  readonly DOMString nodeName;
+  readonly string nodeName;
 
-  readonly USVString baseURI;
+  readonly string baseURI;
 
   readonly boolean isConnected;
   readonly Document? ownerDocument;
@@ -29,8 +29,8 @@ interface Node : EventTarget {
   readonly Node? previousSibling;
   readonly Node? nextSibling;
 
-  [CEReactions] attribute DOMString? nodeValue;
-  [CEReactions] attribute DOMString? textContent;
+  [CEReactions] attribute string? nodeValue;
+  [CEReactions] attribute string? textContent;
   [CEReactions] undefined normalize();
 
   [CEReactions, NewObject] Node cloneNode(optional boolean subtree = false);
@@ -46,9 +46,9 @@ interface Node : EventTarget {
   unsigned short compareDocumentPosition(Node other);
   boolean contains(Node? other);
 
-  DOMString? lookupPrefix(DOMString? namespace);
-  DOMString? lookupNamespaceURI(DOMString? prefix);
-  boolean isDefaultNamespace(DOMString? namespace);
+  string? lookupPrefix(string? namespace);
+  string? lookupNamespaceURI(string? prefix);
+  boolean isDefaultNamespace(string? namespace);
 
   [CEReactions] Node insertBefore(Node node, Node? child);
   [CEReactions] Node appendChild(Node node);
@@ -61,15 +61,15 @@ dictionary GetRootNodeOptions {
 };
 
 interface MutationRecord {
-  readonly DOMString type;
+  readonly string type;
   [SameObject] readonly Node target;
   [SameObject] readonly NodeList addedNodes;
   [SameObject] readonly NodeList removedNodes;
   readonly Node? previousSibling;
   readonly Node? nextSibling;
-  readonly DOMString? attributeName;
-  readonly DOMString? attributeNamespace;
-  readonly DOMString? oldValue;
+  readonly string? attributeName;
+  readonly string? attributeNamespace;
+  readonly string? oldValue;
 };
 
 abstract class Window: EventTarget {
@@ -77,39 +77,45 @@ abstract class Window: EventTarget {
   [LegacyUnforgeable] readonly WindowProxy window;
   [Replaceable] readonly WindowProxy self;
   [LegacyUnforgeable] readonly Document document = globalThis.document;
-  attribute DOMString name; 
+  attribute string name; 
   [PutForwards=href, LegacyUnforgeable] readonly Location location;
   readonly History history;
   [Replaceable] readonly Navigation navigation;
   readonly CustomElementRegistry customElements;
-  [Replaceable] readonly BarProp locationbar;
-  [Replaceable] readonly BarProp menubar;
-  [Replaceable] readonly BarProp personalbar;
-  [Replaceable] readonly BarProp scrollbars;
-  [Replaceable] readonly BarProp statusbar;
-  [Replaceable] readonly BarProp toolbar;
-  attribute DOMString status;
+  [Replaceable] readonly locationbar: BarProp;
+  [Replaceable] readonly menubar: BarProp;
+  [Replaceable] readonly personalbar: BarProp;
+  [Replaceable] readonly scrollbars: BarProp;
+  [Replaceable] readonly statusbar: BarProp;
+  [Replaceable] readonly toolbar: BarProp;
+  attribute string status;
   close(){
     __PyBark__.closeThisTab();
   };
-  readonly boolean closed;
-  undefined stop();
-  undefined focus();
-  undefined blur();
+  readonly closed: boolean;
+  stop(){
+    return;
+  };
+  focus(){
+    return;
+  };
+  blur(){
+    return;
+  };
 
   // other browsing contexts
-  [Replaceable] readonly WindowProxy frames;
-  [Replaceable] readonly unsigned long length;
-  [LegacyUnforgeable] readonly WindowProxy? top;
+  [Replaceable] readonly frames: WindowProxy;
+  [Replaceable] readonly length: int;
+  [LegacyUnforgeable] readonly top?: WindowProxy;
   attribute any opener;
   [Replaceable] readonly WindowProxy? parent;
   readonly Element? frameElement;
-  WindowProxy? open(optional USVString url = "", optional DOMString target = "_blank", optional [LegacyNullToEmptyString] DOMString features = "");
+  WindowProxy? open(optional string url = "", optional string target = "_blank", optional [LegacyNullToEmptyString] string features = "");
 
   // Since this is the global object, the IDL named getter adds a NamedPropertiesObject exotic
   // object on the prototype chain. Indeed, this does not make the global object an exotic object.
   // Indexed access is taken care of by the WindowProxy exotic object.
-  getter object (DOMString name);
+  getter object (string name);
 
   // the user agent
   readonly Navigator navigator = globalThis.navigator;
@@ -137,7 +143,7 @@ abstract class Window: EventTarget {
     }
   };
 
-  undefined postMessage(any message, USVString targetOrigin, optional sequence<object> transfer = []);
+  undefined postMessage(any message, string targetOrigin, optional sequence<object> transfer = []);
   undefined postMessage(any message, optional WindowPostMessageOptions options = {});
 
   // also has obsolete members
@@ -146,5 +152,5 @@ Window includes GlobalEventHandlers;
 Window includes WindowEventHandlers;
 
 dictionary WindowPostMessageOptions : StructuredSerializeOptions {
-  USVString targetOrigin = "/";
+  string targetOrigin = "/";
 };

@@ -1,0 +1,26 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:html="http://www.w3.org/1999/xhtml" 
+           targetNamespace="res://crossdom.xsd"
+           elementFormDefault="qualified">
+
+    <xs:import namespace="http://www.w3.org/1999/xhtml" schemaLocation="http://www.w3.org/1999/xhtml.xsd"/>
+
+    <xs:element name="BrowserWindow">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="Tab" maxOccurs="unbounded">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="document">
+                                <xs:complexType mixed="true">
+                                    
+                                </xs:complexType>
+                            </xs:element>
+                        </xs:sequence>
+                        <xs:attribute name="id" type="xs:string" use="required"/>
+                    </xs:complexType>
+                </xs:element>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>

@@ -59,10 +59,16 @@ def _request(url: str, method: str, connection_id: int):
 
     connections[connection_id].request(method=method, url=path, headers=headers)
     response = connections[connection_id].getresponse()
+    _headers = response.getheaders()
+    headers={}
+    for header in _headers:
+        headers.update({
+            header[0]: header[1]
+        })
     response_dict = {
         "status": response.status,
         "reason": response.reason,
-        "headers": response.getheaders(),  # list of (name, value)
+        "headers": headers,
         "content": response.read()
     }
     return response_dict
@@ -72,6 +78,17 @@ def _parse_about_key(url: str) -> str:
     # Accept forms like 'about:mozilla' or full URLs parsed earlier
     if url.startswith("about:"):
         return url.split(":", 1)[1]
+    parsed = urlparse(url)
+    # Some about URIs might put the key in path
+    key = parsed.path.lstrip("/")
+    if not key:
+        key = parsed.netloc
+    return key
+
+def _parse_res_key(url: str) -> str:
+    # Accept forms like 'about:mozilla' or full URLs parsed earlier
+    if url.startswith("res://"):
+        return url.split("://", 1)[1]
     parsed = urlparse(url)
     # Some about URIs might put the key in path
     key = parsed.path.lstrip("/")
@@ -148,7 +165,7 @@ def _about_url_request(url: str, method: str):
         }
 
 def _res_url_request(url: str, method: str):
-    key = _parse_about_key(url)
+    key = _parse_res_key(url)
     file_path = f"{key}"
     try:
         with open(file_path, "rb") as fd:

@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS bookmarks (
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    `name` TEXT NOT NULL,
+    `url` TEXT NOT NULL,
+    `tags` TEXT NOT NULL   
+);

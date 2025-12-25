@@ -18,9 +18,9 @@ events_js_1.EventTarget;
     unsigned;
     short;
     nodeType;
-    DOMString;
+    string;
     nodeName;
-    USVString;
+    string;
     baseURI;
     boolean;
     isConnected;
@@ -40,10 +40,10 @@ events_js_1.EventTarget;
     Node ? nextSibling : ;
     [CEReactions];
     attribute;
-    DOMString ? nodeValue : ;
+    string ? nodeValue : ;
     [CEReactions];
     attribute;
-    DOMString ? textContent : ;
+    string ? textContent : ;
     [CEReactions];
     undefined;
     normalize();
@@ -65,10 +65,10 @@ events_js_1.EventTarget;
     compareDocumentPosition(Node, other);
     boolean;
     contains(Node ? other : );
-    DOMString ? lookupPrefix(DOMString ? namespace : ) : ;
-    DOMString ? lookupNamespaceURI(DOMString ? prefix : ) : ;
+    string ? lookupPrefix(string ? namespace : ) : ;
+    string ? lookupNamespaceURI(string ? prefix : ) : ;
     boolean;
-    isDefaultNamespace(DOMString ? namespace : );
+    isDefaultNamespace(string ? namespace : );
     [CEReactions];
     Node;
     insertBefore(Node, node, Node ? child : );
@@ -90,7 +90,7 @@ GetRootNodeOptions;
     composed = false;
 }
 ;
-DOMString;
+string;
 type;
 [SameObject];
 Node;
@@ -103,9 +103,9 @@ NodeList;
 removedNodes;
 Node ? previousSibling : ;
 Node ? nextSibling : ;
-DOMString ? attributeName : ;
-DOMString ? attributeNamespace : ;
-DOMString ? oldValue : ;
+string ? attributeName : ;
+string ? attributeNamespace : ;
+string ? oldValue : ;
 ;
 class Window {
 }
@@ -122,7 +122,7 @@ events_js_1.EventTarget;
     Document;
     document = globalThis.document;
     attribute;
-    DOMString;
+    string;
     name;
     [PutForwards = href, LegacyUnforgeable];
     Location;
@@ -135,61 +135,60 @@ events_js_1.EventTarget;
     CustomElementRegistry;
     customElements;
     [Replaceable];
-    BarProp;
-    locationbar;
+    locationbar: BarProp;
     [Replaceable];
-    BarProp;
-    menubar;
+    menubar: BarProp;
     [Replaceable];
-    BarProp;
-    personalbar;
+    personalbar: BarProp;
     [Replaceable];
-    BarProp;
-    scrollbars;
+    scrollbars: BarProp;
     [Replaceable];
-    BarProp;
-    statusbar;
+    statusbar: BarProp;
     [Replaceable];
-    BarProp;
-    toolbar;
+    toolbar: BarProp;
     attribute;
-    DOMString;
+    string;
     status;
     close();
     {
         __PyBark__.closeThisTab();
     }
     ;
-    boolean;
-    closed;
-    undefined;
+    closed: boolean;
     stop();
-    undefined;
+    {
+        return;
+    }
+    ;
     focus();
-    undefined;
+    {
+        return;
+    }
+    ;
     blur();
+    {
+        return;
+    }
+    ;
     // other browsing contexts
     [Replaceable];
-    WindowProxy;
-    frames;
+    frames: WindowProxy;
     [Replaceable];
-    unsigned;
-    long;
-    length;
+    length: int;
     [LegacyUnforgeable];
-    WindowProxy ? top : ;
+    top ?  : WindowProxy;
     attribute;
     any;
     opener;
     [Replaceable];
     WindowProxy ? parent : ;
     Element ? frameElement : ;
-    WindowProxy ? open(optional, USVString, url = "", optional, DOMString, target = "_blank", optional[LegacyNullToEmptyString], DOMString, features = "") : ;
+    WindowProxy ? open(optional, string, url = "", optional, string, target = "_blank", optional[LegacyNullToEmptyString], string, features = "") : ;
     // Since this is the global object, the IDL named getter adds a NamedPropertiesObject exotic
     // object on the prototype chain. Indeed, this does not make the global object an exotic object.
     // Indexed access is taken care of by the WindowProxy exotic object.
     getter;
-    object(DOMString, name);
+    object(string, name);
     Navigator;
     navigator = globalThis.navigator;
     [Replaceable];
@@ -226,7 +225,7 @@ events_js_1.EventTarget;
     }
     ;
     undefined;
-    postMessage(any, message, USVString, targetOrigin, optional, sequence < object > transfer, []);
+    postMessage(any, message, string, targetOrigin, optional, sequence < object > transfer, []);
     undefined;
     postMessage(any, message, optional, WindowPostMessageOptions, options = {});
     // also has obsolete members
@@ -241,7 +240,7 @@ WindowEventHandlers;
 dictionary;
 WindowPostMessageOptions: StructuredSerializeOptions;
 {
-    USVString;
+    string;
     targetOrigin = "/";
 }
 ;

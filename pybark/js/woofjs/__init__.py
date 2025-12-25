@@ -31,8 +31,6 @@ except ImportError:
                 "cd woofjs && maturin develop"
             )
 
-from woofjs import WoofJsApi, WoofJsIoStream
-
 
 class WoofJsRuntime:
     """

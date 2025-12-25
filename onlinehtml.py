@@ -1,4 +1,5 @@
 import httpm
+import http.cookies as cookie_parser
 import htmlm
 from urllib.parse import urljoin, urlparse
 import re
@@ -7,6 +8,8 @@ import js
 import threading
 import time
 import collections
+import storage
+import traceback
 
 class WebPage:
     """Represents a complete web page with its DOM and metadata"""
@@ -20,6 +23,7 @@ class WebPage:
         self.links = self._extract_links()
         self.scripts = self._extract_scripts()
         self.stylesheets = self._extract_stylesheets()
+        self.images = self._extract_images()
         # simple event flags
         self.domcontentloaded_fired = False
         self.load_fired = False
@@ -65,9 +69,13 @@ class WebPage:
                     'url': absolute_url,
                     'element': script
                 })
+
         return scripts
     
     def _extract_stylesheets(self) -> list:
+        return self._extract_stylesheets_1()+self._extract_stylesheets_2()
+
+    def _extract_stylesheets_1(self) -> list:
         """Extract all stylesheet links from the page"""
         stylesheets = []
         link_elements = self._find_elements_by_tag('link')
@@ -82,7 +90,27 @@ class WebPage:
                         'element': link
                     })
         return stylesheets
+
+    def _extract_stylesheets_2(self) -> list:
+        """Extract all stylesheet links from the page"""
+        stylesheets = []
+        link_elements = self._find_elements_by_tag('style')
+        for link in link_elements:
+            if True:
+                href = link.getAttribute('src')
+                if href:
+                    absolute_url = urljoin(self.url, href)
+                    stylesheets.append({
+                        'url': absolute_url,
+                        'element': link
+                    })
+        return stylesheets
     
+
+    def _extract_images(self):
+        img_elements = self._find_elements_by_tag('img')
+        
+
     def _find_elements_by_tag(self, tag_name: str) -> list:
         """Find all elements with a specific tag name"""
         elements = []
@@ -99,10 +127,10 @@ class WebPage:
 class WebBrowser:
     """Main browser class that combines HTTP client and HTML parser"""
     
-    def __init__(self):
+    def __init__(self, profile = "default"):
         self.current_page: Optional[WebPage] = None
         self.history = []
-        self.cookies = {}
+        self.profile = storage.Profile(profile)
         self._original_html_content = ""
         # JS integration state
         self._js_initialized = False
@@ -144,6 +172,8 @@ class WebBrowser:
             # Store original HTML content for CSS re-parsing
             self._original_html_content = content
             
+            
+
             # Parse HTML
             print(f"🔍 Parsing HTML...")
             parser = htmlm.HTMLDomInitializer(content)
@@ -185,6 +215,8 @@ class WebBrowser:
             
         except Exception as e:
             print(f"❌ Error loading page: {e}")
+            print("Traceback:")
+            traceback.print_exc()
             return None
     
     def get_page_info(self) -> Dict[str, Any]:
@@ -454,6 +486,19 @@ class WebBrowser:
             self._print_element(child, depth + 1, max_depth)
         
         print(f"{indent}</{element.tagName}>")
+
+    @property
+    def cookies(self):
+        # Get cookies from the profile
+        cursor = self.profile.cursor
+        parsed = urlparse(self.current_page.url)
+        domain = parsed.netloc.split(":")[0]
+        path = parsed.path
+        cursor.execute(f"""
+        SELECT * FROM cookies WHERE domain = "{domain}" AND path = "{path}"
+        """)
+
+    
 
 def main():
     """Interactive browser session"""

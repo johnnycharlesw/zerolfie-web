@@ -1,36 +1,34 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-DOMString;
+string;
 type;
 EventTarget ? target : ;
 EventTarget ? srcElement : ; // legacy
 EventTarget ? currentTarget : ;
 sequence < EventTarget > composedPath();
-const unsigned, short, NONE = 0;
-const unsigned, short, CAPTURING_PHASE = 1;
-const unsigned, short, AT_TARGET = 2;
-const unsigned, short, BUBBLING_PHASE = 3;
-unsigned;
-short;
-eventPhase;
-undefined;
+const NONE = 0;
+const CAPTURING_PHASE = 1;
+const AT_TARGET = 2;
+const BUBBLING_PHASE = 3;
+eventPhase: int;
 stopPropagation();
-attribute;
-boolean;
-cancelBubble; // legacy alias of .stopPropagation()
-undefined;
+{
+    return; // stop propogation later
+}
+;
 stopImmediatePropagation();
-boolean;
-bubbles;
-boolean;
-cancelable;
-attribute;
-boolean;
-returnValue; // legacy
-undefined;
+{
+    return; // stop propogation later
+}
+;
+bubbles: boolean;
+cancelable: boolean;
 preventDefault();
-boolean;
-defaultPrevented;
+{
+    this.defaultPrevented = true;
+}
+;
+defaultPrevented: boolean;
 boolean;
 composed;
 [LegacyUnforgeable];
@@ -39,23 +37,21 @@ isTrusted;
 DOMHighResTimeStamp;
 timeStamp;
 undefined;
-initEvent(DOMString, type, optional, boolean, bubbles = false, optional, boolean, cancelable = false); // legacy
+initEvent(string, type, optional, boolean, bubbles = false, optional, boolean, cancelable = false); // legacy
 ;
-dictionary;
-EventInit;
-{
-    boolean;
-    bubbles = false;
-    boolean;
-    cancelable = false;
-    boolean;
-    composed = false;
+boolean;
+bubbles = false;
+boolean;
+cancelable = false;
+boolean;
+composed = false;
+;
+class EventTarget {
 }
-;
 undefined;
-addEventListener(DOMString, type, EventListener ? callback : , optional(AddEventListenerOptions, or, boolean), options = {});
+addEventListener(string, type, EventListener ? callback : , optional(AddEventListenerOptions, or, boolean), options = {});
 undefined;
-removeEventListener(DOMString, type, EventListener ? callback : , optional(EventListenerOptions, or, boolean), options = {});
+removeEventListener(string, type, EventListener ? callback : , optional(EventListenerOptions, or, boolean), options = {});
 boolean;
 dispatchEvent(Event, event);
 ;
@@ -70,11 +66,9 @@ EventListenerOptions;
     capture = false;
 }
 ;
-dictionary;
-AddEventListenerOptions: EventListenerOptions;
+EventListenerOptions;
 {
-    boolean;
-    passive;
+    passive: boolean;
     boolean;
     once = false;
     AbortSignal;
@@ -94,16 +88,19 @@ EventTarget;
     ;
     [Exposed = (Window, Worker), NewObject];
     AbortSignal;
-    timeout([EnforceRange], unsigned, long, long, milliseconds);
+    timeout([EnforceRange], milliseconds, bigint);
     [NewObject];
     AbortSignal;
     _any(sequence < AbortSignal > signals);
-    boolean;
-    aborted;
-    any;
-    reason;
-    undefined;
+    aborted: boolean;
+    reason: any;
     throwIfAborted();
+    {
+        if (this.aborted) {
+            throw new Error("Thrown since it aborted!");
+        }
+    }
+    ;
     attribute;
     EventHandler;
     onabort;
@@ -113,7 +110,7 @@ class UIEvent {
 }
 Event;
 {
-    constructor(DOMString, type, optional, UIEventInit, eventInitDict = {});
+    constructor(string, type, optional, UIEventInit, eventInitDict = {});
     {
     }
     ;
@@ -134,8 +131,135 @@ class FocusEvent {
 }
 UIEvent;
 {
-    constructor(DOMString, type, optional, FocusEventInit, eventInitDict = {});
+    constructor(string, type, optional, FocusEventInit, eventInitDict = {});
+    {
+        super();
+    }
+    ;
     EventTarget ? relatedTarget : ;
+}
+;
+class MouseEvent {
+}
+UIEvent;
+{
+    constructor(string, type, optional, MouseEventInit, eventInitDict = {});
+    {
+        super();
+    }
+    ;
+    screenX: int;
+    screenY: int;
+    clientX: int;
+    clientY: int;
+    layerX: int;
+    layerY: int;
+    ctrlKey: boolean;
+    shiftKey: boolean;
+    altKey: boolean;
+    metaKey: boolean;
+    button: int;
+    buttons: int;
+    relatedTarget ?  : EventTarget;
+    getModifierState(string, keyArg);
+    boolean;
+    {
+    }
+    ;
+}
+;
+class WheelEvent {
+}
+MouseEvent;
+{
+    constructor(string, type, optional, WheelEventInit, eventInitDict = {});
+    {
+        super();
+    }
+    ;
+    const DOM_DELTA_PIXEL = 0x00;
+    const DOM_DELTA_LINE = 0x01;
+    const DOM_DELTA_PAGE = 0x02;
+    deltaX: int;
+    deltaY: int;
+    deltaZ: int;
+    deltaMode: int;
+}
+;
+class InputEvent {
+}
+UIEvent;
+{
+    constructor(string, type, optional, InputEventInit, eventInitDict = {});
+    data ?  : string;
+    isComposing: boolean;
+    inputType: string;
+}
+;
+dictionary;
+InputEventInit: UIEventInit;
+{
+    data ?  : string = null;
+    isComposing: boolean = false;
+    inputType: string = "";
+}
+;
+UIEvent;
+{
+    constructor(string, type, optional, KeyboardEventInit, eventInitDict = {});
+    // KeyLocationCode
+    const unsigned, long, DOM_KEY_LOCATION_STANDARD = 0x00;
+    const unsigned, long, DOM_KEY_LOCATION_LEFT = 0x01;
+    const unsigned, long, DOM_KEY_LOCATION_RIGHT = 0x02;
+    const unsigned, long, DOM_KEY_LOCATION_NUMPAD = 0x03;
+    attribute;
+    string;
+    key;
+    attribute;
+    string;
+    code;
+    attribute;
+    unsigned;
+    long;
+    location;
+    attribute;
+    boolean;
+    ctrlKey;
+    attribute;
+    boolean;
+    shiftKey;
+    attribute;
+    boolean;
+    altKey;
+    attribute;
+    boolean;
+    metaKey;
+    attribute;
+    boolean;
+    repeat;
+    attribute;
+    boolean;
+    isComposing;
+    boolean;
+    getModifierState(string, keyArg);
+}
+;
+class CompositionEvent {
+}
+UIEvent;
+{
+    constructor(string, type, optional, CompositionEventInit, eventInitDict = {});
+    {
+    }
+    ;
+    data: string;
+}
+;
+dictionary;
+CompositionEventInit: UIEventInit;
+{
+    string;
+    data = "";
 }
 ;
 //# sourceMappingURL=events.js.map

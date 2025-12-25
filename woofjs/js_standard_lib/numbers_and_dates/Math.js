@@ -96,15 +96,15 @@ class Math { // Manufacture the calculator
     }
 
     cbrt(x){
-        return __WoofJS__.cubeRoot(x);
+        return this._woofJS_number_root(x,3);
     }
 
     sqrt(x){
-        return __WoofJS__.squareRoot(x);
+        return this._woofJS_number_root(x,2);
     }
 
     log(x){
-        return __WoofJS__.log(x);
+        return __WoofJS__._woofJS_number_root(x,this.E);
     }
 
     log1p(x){
@@ -126,7 +126,15 @@ class Math { // Manufacture the calculator
     }
 
     round(x){
-        return __WoofJS__.roundToNearestInteger(x);
+        let y=this.trunc(x);
+        let frac=x-y;
+        if (frac>0.5 || (frac==0.5 && y>=0)){
+            return y+1;
+        }
+        if (frac<-0.5 || (frac==0.5 && y<0)) {
+            return y-1;
+        }
+        return y;
     }
 
     abs(x){
@@ -147,15 +155,42 @@ class Math { // Manufacture the calculator
     }
 
     floor(x){
-        return __WoofJS__.roundToLowestCloseInteger(x);
+        if (x==NaN || x==Infinity || x==0){
+            return x;
+        }
+        let y=this.trunc(x);
+        if (y>x){
+            return y-1;
+        }
+        return y;
     }
 
     ceil(x){
-        return __WoofJS__.roundToHighestCloseInteger(x);
+        if (x==NaN || x==Infinity || x==0){
+            return x;
+        }
+        let y=this.trunc(x);
+        if (y<x){
+            return y+1;
+        }
+        return y;
     }
 
     trunc(x){
-        return __WoofJS__.truncateBeforeFractionalPart(x);
+        let x_str = x.toString().split("");
+        let trunc_x_str="";
+        let did_hit_decimal=false;
+        x_str.forEach((char)=>{
+            if (did_hit_decimal) {
+                return;
+            }
+            if (char === ".") {
+                did_hit_decimal=true;
+                return;
+            }
+            trunc_x_str.concat(char);
+        });
+        return parseInt(trunc_x_str,10)
     }
 
     max(...values){
@@ -213,6 +248,33 @@ class Math { // Manufacture the calculator
 
     f16round(doubleFloat){
         return __WoofJS__.roundToNearest16BitHalfPrecision(doubleFloat);
+    }
+
+    hypot(...values){
+        // Edge cases
+
+
+        // Actual logic
+        let value_squares=[];
+        values.forEach((value)=>{
+            value_squares.concat([value*value]);
+        });
+
+        let hypotenuse = this.sqrt(this.sumPrecise(value_squares));
+        return hypotenuse
+    }
+
+    _woofJS_number_root(x, dimensions){
+        if (x<0){
+            return NaN;
+        }
+        let y=0;
+        let accuracy=500000000;
+        let step=0.1/(this.pow(10,accuracy));
+
+        while (this.pow(y,dimensions) !== x){
+            y+=step;
+        }
     }
 
 
