@@ -38,11 +38,27 @@ class CSSMediaRule:
         self.media = media  # raw media query text (e.g., 'screen and (min-width: 600px)')
         self.rules = rules
 
+@dataclass
+class CSSCounterStyle:
+    """Represents a @counter-style rule definition"""
+    name: str
+    system: Optional[str] = None
+    symbols: Optional[str] = None
+    additive_symbols: Optional[str] = None
+    negative: Optional[str] = None
+    prefix: Optional[str] = None
+    suffix: Optional[str] = None
+    range: Optional[str] = None
+    pad: Optional[str] = None
+    speak_as: Optional[str] = None
+    fallback: Optional[str] = None
+
 class CSSStyleSheet:
     def __init__(self, isPrinting: bool):
         self.rules: List[CSSRule] = []
         self.media_rules: List[CSSMediaRule] = []
         self.imports: List[str] = []
+        self.counter_styles: Dict[str, CSSCounterStyle] = {}  # name -> counter style
         self.is_printing = isPrinting
         
     def add_rule(self, rule: 'CSSRule'):
@@ -50,6 +66,14 @@ class CSSStyleSheet:
 
     def add_media_rule(self, media_rule: 'CSSMediaRule'):
         self.media_rules.append(media_rule)
+    
+    def add_counter_style(self, counter_style: CSSCounterStyle):
+        """Add a counter style definition"""
+        self.counter_styles[counter_style.name] = counter_style
+    
+    def get_counter_style(self, name: str) -> Optional[CSSCounterStyle]:
+        """Get a counter style by name"""
+        return self.counter_styles.get(name)
         
     def get_styles_for_element(self, element, parent=None, media_context: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
         """Get all applicable styles for an element.
@@ -62,6 +86,17 @@ class CSSStyleSheet:
         
         if media_context is None:
             media_context = default_media_context(self.is_printing)
+        
+        # Apply default styles for document element (like Gecko's Document)
+        # Note: document element is not rendered, so only inheritable properties are set
+        # These serve as the root for inheritance to child elements
+        if hasattr(element, 'tagName') and element.tagName == 'document':
+            default_document_styles = {
+                'font-family': 'sans-serif',
+                'font-size': '16px',
+                'color': '#000000',
+            }
+            styles.update(default_document_styles)
         
         # Collect custom properties from :root (base + matching media)
         vars_map = self._collect_root_custom_properties(media_context)
@@ -117,7 +152,8 @@ class CSSStyleSheet:
             for sel in rule.selectors:
                 if len(sel.parts) == 1:
                     p = sel.parts[0]
-                    if (p.type == 'pseudo' and p.value == 'root') or (p.type == 'element' and p.value.lower() in ('html',)):
+                    # :root matches document element (our artificial wrapper, like Gecko's Document)
+                    if (p.type == 'pseudo' and p.value == 'root') or (p.type == 'element' and p.value.lower() in ('document', 'html')):
                         return True
             return False
         
@@ -349,12 +385,18 @@ class CSSSelectorPart:
             id_attr = element.getAttribute('id')
             return id_attr == self.value
         elif self.type == 'pseudo':
-            # Support :root minimal matching: treat top-level html element as root too
+            # Support :root matching: matches document element (like Gecko's implicit Document)
             if self.value == 'root':
                 try:
                     tag = getattr(element, 'tagName', '')
-                    if isinstance(tag, str) and tag.lower() == 'html':
-                        return True
+                    if isinstance(tag, str):
+                        tag_lower = tag.lower()
+                        # :root matches the document element (our artificial wrapper)
+                        if tag_lower == 'document':
+                            return True
+                        # Also support html as root for compatibility
+                        if tag_lower == 'html':
+                            return True
                 except Exception:
                     pass
                 return not hasattr(element, 'parent') or getattr(element, 'parent') is None
@@ -857,12 +899,16 @@ class CSSParser:
         return ''.join(parts).strip()
         
     def _parse_at_rule(self, stylesheet: CSSStyleSheet):
-        """Parse @-rules like @import and @media"""
-        if self._peek_value().lower() == '@import':
+        """Parse @-rules like @import, @media, and @counter-style"""
+        peek_val = self._peek_value().lower()
+        if peek_val == '@import':
             self._parse_import_rule(stylesheet)
             return
-        if self._peek_value().lower() == '@media':
+        if peek_val == '@media':
             self._parse_media_rule(stylesheet)
+            return
+        if peek_val == '@counter-style':
+            self._parse_counter_style_rule(stylesheet)
             return
         else:
             # Skip unknown @-rules
@@ -926,6 +972,90 @@ class CSSParser:
                 self._consume_token()
 
         stylesheet.add_media_rule(CSSMediaRule(media_text, nested_rules))
+    
+    def _parse_counter_style_rule(self, stylesheet: CSSStyleSheet):
+        """Parse @counter-style rule with descriptors"""
+        # Consume '@counter-style'
+        self._consume_token()
+        self._consume_whitespace()
+        
+        # Parse counter style name (identifier)
+        counter_name = None
+        if self._peek_type() == CSSTokenType.IDENTIFIER:
+            counter_name = self._consume_token().value
+        else:
+            # Invalid; skip this rule
+            return
+        
+        self._consume_whitespace()
+        
+        # Consume '{'
+        if not self._consume_token_if_type(CSSTokenType.LEFT_BRACE):
+            return
+        
+        # Parse descriptors (similar to parsing declarations)
+        descriptors: Dict[str, str] = {}
+        T = CSSTokenType
+        
+        while not self._is_eof():
+            self._consume_whitespace()
+            
+            if self._peek_type() == T.RIGHT_BRACE:
+                self._consume_token()
+                break
+            
+            # Parse descriptor name (identifier or descriptor starting with '-')
+            desc_name = None
+            if self._peek_type() == T.IDENTIFIER:
+                desc_name = self._consume_token().value
+            elif self._peek_type() == T.DELIM and self._peek_value() == '-':
+                # Descriptor starting with '-' (like 'additive-symbols')
+                name_chars = ['-']
+                self._consume_token()  # consume the '-'
+                while self._peek_type() in (T.IDENTIFIER, T.DELIM):
+                    t = self._consume_token()
+                    name_chars.append(t.value)
+                    if self._peek_type() == T.COLON:
+                        break
+                desc_name = ''.join(name_chars)
+            
+            if not desc_name:
+                # Not a descriptor; consume one token to avoid infinite loop
+                if not self._is_eof():
+                    self._consume_token()
+                continue
+            
+            self._consume_whitespace()
+            
+            if not self._consume_token_if_type(T.COLON):
+                continue
+            
+            self._consume_whitespace()
+            
+            # Parse descriptor value
+            desc_value = self._parse_property_value()
+            descriptors[desc_name.lower()] = desc_value
+            
+            self._consume_whitespace()
+            
+            # Consume semicolon if present
+            self._consume_token_if_type(T.SEMICOLON)
+        
+        # Create CSSCounterStyle object
+        counter_style = CSSCounterStyle(
+            name=counter_name,
+            system=descriptors.get('system'),
+            symbols=descriptors.get('symbols'),
+            additive_symbols=descriptors.get('additive-symbols'),
+            negative=descriptors.get('negative'),
+            prefix=descriptors.get('prefix'),
+            suffix=descriptors.get('suffix'),
+            range=descriptors.get('range'),
+            pad=descriptors.get('pad'),
+            speak_as=descriptors.get('speak-as'),
+            fallback=descriptors.get('fallback')
+        )
+        stylesheet.add_counter_style(counter_style)
         
     # Helper methods
     def _is_eof(self) -> bool:

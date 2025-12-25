@@ -30,9 +30,15 @@ class WebPage:
         
     def _get_content_type(self) -> str:
         """Extract content type from headers"""
-        for header_name, header_value in self.headers.items():
-            if header_name.lower() == 'content-type':
-                return header_value.split(';')[0].strip()
+        # Headers can be either a dict (regular HTTP) or list of tuples (internal URLs)
+        if isinstance(self.headers, dict):
+            for header_name, header_value in self.headers.items():
+                if header_name.lower() == 'content-type':
+                    return header_value.split(';')[0].strip()
+        elif isinstance(self.headers, list):
+            for header_name, header_value in self.headers:
+                if header_name.lower() == 'content-type':
+                    return header_value.split(';')[0].strip()
         return 'text/html'
     
     def _extract_title(self) -> str:
