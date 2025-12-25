@@ -500,7 +500,7 @@ class HTMLDomInitializer:
         # Load external stylesheets
         for stylesheet_content in self.stylesheets:
             try:
-                parsed_css = css.parse_css(stylesheet_content, false)
+                parsed_css = css.parse_css(stylesheet_content, False)
                 self._merge_stylesheet(parsed_css)
             except Exception as e:
                 print(f"Error parsing CSS: {e}")
@@ -511,7 +511,7 @@ class HTMLDomInitializer:
             style_content = style_element.textContent
             if style_content:
                 try:
-                    parsed_css = css.parse_css(style_content, false)
+                    parsed_css = css.parse_css(style_content, False)
                     self._merge_stylesheet(parsed_css)
                 except Exception as e:
                     print(f"Error parsing style tag: {e}")

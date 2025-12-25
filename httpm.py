@@ -1,6 +1,6 @@
 import http.client as pyhttp
 import os_getter
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
 import dnsm
 import sslm
 from typing import Optional, Tuple, List
@@ -184,7 +184,7 @@ def _res_url_request(url: str, method: str):
         return {
             "status": 404,
             "reason": "Not Found",
-            "headers": [("ZerolfieWeb-Internal-WebPage", "True"), ("Content-Type", _guess_mime_type(path=file_path)+"; charset=utf8")],
+            "headers": [("ZerolfieWeb-Internal-WebPage", "True"), ("Content-Type", "text/html; charset=utf-8")],
             "content": not_found
         }
 
@@ -250,9 +250,38 @@ def request(url: str = "http://localhost/index.php/Main_Page", port: Optional[in
 
     # Handle res: URLs immediately
     if url_parsed.scheme == "res" or url.startswith("res:"):
-        resp = _about_url_request(url=url, method=method)
+        resp = _res_url_request(url=url, method=method)
         _last_url = url
         return resp
+
+    # Handle file: URLs immediately (local filesystem)
+    if url_parsed.scheme == "file" or url.startswith("file:"):
+        netloc = url_parsed.netloc or ""
+        path = url_parsed.path or ""
+        # Combine Windows drive from netloc if present (e.g., file://C:/...)
+        local_path = unquote(path)
+        if netloc:
+            local_path = f"{netloc}{local_path}"
+        # Normalize leading slash for Windows-style paths like /C:/...
+        if len(local_path) >= 3 and local_path[0] == "/" and local_path[2] == ":" and local_path[1].isalpha():
+            local_path = local_path[1:]
+        try:
+            with open(local_path, "rb") as f:
+                data = f.read()
+            return {
+                "status": 200,
+                "reason": "OK",
+                "headers": [("ZerolfieWeb-Internal-File", "True"), ("Content-Type", _guess_mime_type(local_path))],
+                "content": data
+            }
+        except FileNotFoundError:
+            body = b"<h1>404 Not Found</h1>\n<p>File not found.</p>\n"
+            return {
+                "status": 404,
+                "reason": "Not Found",
+                "headers": [("ZerolfieWeb-Internal-File", "True"), ("Content-Type", "text/html; charset=utf-8")],
+                "content": body
+            }
 
     # Determine host and port robustly
     domain = url_parsed.hostname or ""

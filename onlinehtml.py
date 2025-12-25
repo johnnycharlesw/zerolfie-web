@@ -189,10 +189,13 @@ class WebBrowser:
             print(f"📜 Found {len(self.current_page.scripts)} scripts")
             print(f"🎨 Found {len(self.current_page.stylesheets)} stylesheets")
             
-            # Load CSS stylesheets
-            if self.current_page.stylesheets:
-                print(f"🎨 Loading {len(self.current_page.stylesheets)+1} stylesheets...")
-                self._load_css_stylesheets(self.current_page.stylesheets + ["res:default.css"], base_url=final_url)
+            # Load CSS stylesheets (include default.css explicitly and log counts accurately)
+            all_stylesheets = list(self.current_page.stylesheets)
+            # Add default stylesheet if available; treat as a pseudo-entry with url
+            all_stylesheets.append({'url': 'res://default.css', 'element': None})
+            if all_stylesheets:
+                print(f"🎨 Loading {len(all_stylesheets)} stylesheets...")
+                self._load_css_stylesheets(all_stylesheets, base_url=final_url)
 
             # Initialize and run JavaScript after CSS (basic behavior)
             if self.current_page.scripts:
@@ -265,34 +268,49 @@ class WebBrowser:
             return None
     
     def _load_css_stylesheets(self, stylesheets, base_url: str = None):
-        """Load CSS stylesheets from URLs, following redirects."""
-        import httpm
+        """Load CSS stylesheets from URLs, following redirects.
+        Expects stylesheets as a list of dicts with a 'url' key.
+        """
         css_contents = []
-        
+        loaded = 0
         for stylesheet in stylesheets:
             try:
-                css_url = stylesheet['url']
+                # Defensive: allow plain string entries but prefer dicts
+                css_url = stylesheet['url'] if isinstance(stylesheet, dict) else str(stylesheet)
                 if base_url:
                     css_url = urljoin(base_url, css_url)
                 print(f"  📥 Loading CSS: {css_url}")
                 response, css_final_url = self._http_get_follow_redirects(css_url)
-                if response['status'] == 200:
-                    content = response['content']
+                status = response.get('status')
+                if status == 200:
+                    content = response.get('content', b"")
                     if isinstance(content, bytes):
                         content = content.decode('utf-8', errors='replace')
                     css_contents.append(content)
+                    loaded += 1
                     print(f"  ✅ Loaded CSS ({len(content)} characters)")
                 else:
-                    print(f"  ⚠️  Failed to load CSS: HTTP {response['status']}")
+                    reason = response.get('reason', '')
+                    print(f"  ⚠️  Failed to load CSS: HTTP {status} {reason}")
             except Exception as e:
-                print(f"  ❌ Error loading CSS: {e}")
+                # Include type information to aid debugging type mismatches
+                try:
+                    descr = f"type(stylesheet)={type(stylesheet)}, keys={list(stylesheet.keys()) if isinstance(stylesheet, dict) else 'n/a'}"
+                except Exception:
+                    descr = f"type(stylesheet)={type(stylesheet)}"
+                print(f"  ❌ Error loading CSS: {e} ({descr})")
         
         # Apply CSS to the current page
         if css_contents:
             print(f"🎨 Applying {len(css_contents)} stylesheets...")
             original_html = self._get_original_html_content()
-            parser = htmlm.HTMLDomInitializer(original_html, css_contents)
-            self.current_page.dom = parser.get_document()
+            try:
+                parser = htmlm.HTMLDomInitializer(original_html, css_contents)
+                self.current_page.dom = parser.get_document()
+            except Exception as e:
+                print(f"  ❌ Error applying CSS: {e}")
+        else:
+            print("🎨 No stylesheets loaded; skipping CSS application")
 
     def _get_original_html_content(self) -> str:
         """Get the original HTML content for re-parsing with CSS"""
@@ -441,10 +459,8 @@ class WebBrowser:
             if status in (301, 302, 303, 307, 308):
                 # Find Location header
                 location = None
-                for name, value in response.get('headers', []):
-                    if name.lower() == 'location':
-                        location = value
-                        break
+                if bool(response.get('headers', {})['Location']):
+                    location = response.get('headers', {})['Location']
                 if not location:
                     break
                 # Resolve relative redirects
