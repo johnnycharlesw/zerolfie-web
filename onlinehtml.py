@@ -30,7 +30,7 @@ class WebPage:
         
     def _get_content_type(self) -> str:
         """Extract content type from headers"""
-        for header_name, header_value in self.headers:
+        for header_name, header_value in self.headers.items():
             if header_name.lower() == 'content-type':
                 return header_value.split(';')[0].strip()
         return 'text/html'
@@ -214,6 +214,7 @@ class WebBrowser:
             # Final drain after load event
             self._drain_tasks()
             
+            self.print_dom_tree(max_depth=3, show_styles=True)
             return self.current_page
             
         except Exception as e:

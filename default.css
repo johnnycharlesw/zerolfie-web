@@ -1,3 +1,4 @@
+@charset "UTF-8";
 /*
   UA stylesheet: Unicode Bidi Isolation
   - Isolate text in common inline and interactive elements to prevent bidi context bleed
@@ -328,6 +329,59 @@ frame {
   frame {
     border-color: rgb(148, 148, 148);
   }
+}
+@counter-style upper-latin {
+  system: alphabetic;
+  symbols: A B C D E F G H I J K L M N O P Q R S T U V W X Y Z;
+  suffix: ". ";
+}
+@counter-style lower-latin {
+  system: alphabetic;
+  symbols: a b c d e f g h i j k l m n o p q r s t u v w x y z;
+  suffix: ". ";
+}
+@counter-style upper-alpha {
+  system: alphabetic;
+  symbols: A B C D E F G H I J K L M N O P Q R S T U V W X Y Z;
+  suffix: ". ";
+}
+@counter-style lower-alpha {
+  system: alphabetic;
+  symbols: a b c d e f g h i j k l m n o p q r s t u v w x y z;
+  suffix: ". ";
+}
+@counter-style decimal {
+  system: numeric;
+  symbols: "01" "02" "03" "04" "05" "06" "07" "08" "09";
+  suffix: ". ";
+}
+@counter-style decimal-leading-zero {
+  system: numeric;
+  symbols: "1" "2" "3" "4" "5" "6" "7" "8" "9";
+  suffix: ". ";
+}
+@counter-style lower-greek {
+  system: alphabetic;
+  symbols: α β γ δ ε ζ η θ ι κ λ μ ν ξ ο π ρ σ τ υ φ χ ψ ω;
+  suffix: ". ";
+}
+@counter-style upper-greek {
+  system: alphabetic;
+  symbols: Α Β Γ Δ Ε Ζ Η Θ Ι Κ Λ Μ Ν Ξ Ο Π Ρ Σ Τ Υ Φ Χ Ψ Ω;
+  suffix: ". ";
+}
+@counter-style lower-roman {
+  system: additive;
+  symbols: "M" 1000, "CM" 900, "D" 500, "CD" 400, "C" 100, "XC" 90, "L" 50, "XL" 40, "X" 10, "IX" 9, "V" 5, "IV" 4, "I" 1;
+  suffix: ". ";
+  negative: "-";
+}
+@counter-style upper-roman {
+  system: additive;
+  symbols: "M" 1000, "CM" 900, "D" 500, "CD" 400, "C" 100, "XC" 90, "L" 50, "XL" 40, "X" 10, "IX" 9, "V" 5, "IV" 4, "I" 1;
+  suffix: ". ";
+  negative: "-";
+  /* optionally add `pad: 0` if you want fixed width */
 }
 ul {
   list-style-position: outside;

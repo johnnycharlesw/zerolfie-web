@@ -1,11 +1,12 @@
 @mixin decimal_list_styles($has_leading_zero){
+  $name: null;
   @if $has_leading_zero {
     $name: decimal-leading-zero;
   }
   @else {
     $name: decimal;
   }
-  @counter-style $name {
+  @counter-style #{$name} {
     system: numeric;
     @if $has_leading_zero {
       symbols: "1" "2" "3" "4" "5" "6" "7" "8" "9";

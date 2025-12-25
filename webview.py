@@ -329,6 +329,50 @@ class PageRenderer:
         self.tk_root = tk_root
         # Fonts are created lazily to ensure a Tk root exists
         self.font_cache = {}
+        self._image_cache = []
+
+    def _collapse_ws(self, s: str) -> str:
+        try:
+            return ' '.join(str(s).split())
+        except Exception:
+            return str(s) if s is not None else ''
+
+    def _should_underline(self, styles: dict) -> bool:
+        try:
+            tdl = str(styles.get('text-decoration-line', '')).lower()
+            if 'underline' in tdl:
+                return True
+            td = str(styles.get('text-decoration', '')).lower()
+            if 'none' in td:
+                return False
+        except Exception:
+            pass
+        return False
+
+    def _draw_text(self, canvas: tk.Canvas, x: int, y: int, text: str, font: tkfont.Font, color: str, styles: dict) -> int:
+        ws = str(styles.get('white-space', 'normal')).lower()
+        underline = self._should_underline(styles)
+        line_height = font.metrics('linespace')
+        if ws in ('pre', 'pre-wrap'):
+            lines = str(text).splitlines()
+            for line in lines:
+                canvas.create_text(x, y, text=line, anchor='nw', font=font, fill=color)
+                if underline and line:
+                    w = font.measure(line)
+                    y_ul = y + font.metrics('ascent') + 1
+                    canvas.create_line(x, y_ul, x + w, y_ul, fill=color)
+                y += line_height
+            return y
+        else:
+            s = self._collapse_ws(text)
+            if s:
+                canvas.create_text(x, y, text=s, anchor='nw', font=font, fill=color)
+                if underline:
+                    w = font.measure(s)
+                    y_ul = y + font.metrics('ascent') + 1
+                    canvas.create_line(x, y_ul, x + w, y_ul, fill=color)
+                y += line_height
+            return y
 
     def _get_font(self, size=16, weight='normal'):
         key = (size, weight)
@@ -349,12 +393,30 @@ class PageRenderer:
         return int(default)
 
     def _parse_color(self, value, default='#000000'):
-        if not value:
+        """Parse a CSS color value into a Tk-compatible color string.
+        Falls back to default for unsupported/inherited keywords.
+        """
+        try:
+            if value is None:
+                return default
+            v = str(value).strip()
+            if not v:
+                return default
+            lv = v.lower()
+            # Treat CSS keywords as non-colors for Tk rendering
+            if lv in ('inherit', 'initial', 'unset', 'currentcolor'):
+                return default
+            # Transparent is not a valid Tk color for text fill; use default
+            if lv == 'transparent':
+                return default
+            return v
+        except Exception:
             return default
-        return value
 
     def layout_and_paint(self, canvas: tk.Canvas, root_element: htmlm.HTMLElement, viewport_width: int):
         canvas.delete('all')
+        # reset image cache per render to avoid unbounded growth
+        self._image_cache = []
         x = 8
         y = 8
         max_width = max(100, viewport_width - 16)
@@ -412,6 +474,14 @@ class PageRenderer:
         elif tag == 'h3':
             base_size = 20
 
+        # Skip drawing for display:none elements, but still traverse children
+        display_val = str(styles.get('display', '')).strip().lower()
+        if display_val == 'none':
+            y_cursor = y
+            for child in element.childNodes:
+                y_cursor = self._layout_block(canvas, child, x, y_cursor, width)
+            return y_cursor
+
         # Handle rendering
 
         # Step 1: Deal with font sizes and colors
@@ -439,11 +509,11 @@ class PageRenderer:
             box_top = box_bottom = None
 
         # Determine list marker context for li
-        is_list_item = (tag == 'li') and (str(styles.get('display', '')).lower() == 'list-item' or True)
         parent = getattr(element, 'parent', None)
         parent_tag = parent.tagName if isinstance(parent, htmlm.HTMLElement) else ''
         is_ul = parent_tag == 'ul'
         is_ol = parent_tag == 'ol'
+        is_list_item = (tag == 'li') and (is_ul or is_ol)
         list_style_type = (styles.get('list-style-type') or ('disc' if is_ul else 'decimal' if is_ol else None))
         list_style_position = (styles.get('list-style-position') or 'outside')
 
@@ -456,8 +526,15 @@ class PageRenderer:
 
         if is_list_item and (is_ul or is_ol):
             if is_ul:
-                if list_style_type in (None, 'disc', 'initial'):
+                lst = (str(list_style_type).lower() if list_style_type else 'disc')
+                if lst == 'none':
+                    marker_text = None
+                elif lst in ('disc', 'initial'):
                     marker_text = '•'
+                elif lst == 'circle':
+                    marker_text = '○'
+                elif lst == 'square':
+                    marker_text = '■'
                 else:
                     marker_text = '•'
             elif is_ol:
@@ -472,7 +549,7 @@ class PageRenderer:
                             break
                 marker_text = f"{idx}."
             if marker_text:
-                marker_width = tkfont.Font.measure(font, marker_text)
+                marker_width = font.measure(marker_text)
                 if list_style_position == 'outside':
                     content_x += (marker_width + marker_gap)
                     content_width = max(10, content_width - (marker_width + marker_gap))
@@ -480,36 +557,44 @@ class PageRenderer:
         y_cursor = content_y
 
         # Render text content only for typical text blocks
+        render_text_children = True
         if tag in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li'):
-            text = element.textContent.strip()
-            if text:
-                # Draw marker if inside positioning
+            text = element.textContent or ''
+            if text.strip():
                 if marker_text and list_style_position == 'inside':
                     canvas.create_text(content_x, y_cursor, text=marker_text, anchor='nw', font=font, fill=color)
-                    mxw = marker_width or tkfont.Font.measure(font, marker_text)
-                    canvas.create_text(content_x + mxw + marker_gap, y_cursor, text=text, anchor='nw', font=font, fill=color)
-                    y_cursor += line_height
+                    mxw = marker_width or font.measure(marker_text)
+                    y_cursor = self._draw_text(canvas, content_x + mxw + marker_gap, y_cursor, text, font, color, styles)
                 else:
-                    canvas.create_text(content_x, y_cursor, text=text, anchor='nw', font=font, fill=color)
-                    y_cursor += line_height
+                    y_cursor = self._draw_text(canvas, content_x, y_cursor, text, font, color, styles)
+                render_text_children = False
 
         # Render children blocks
         for child in element.childNodes:
-            if isinstance(child, htmlm.HTMLElement) or isinstance(child, htmlm.HTMLTextNode):
+            if isinstance(child, htmlm.HTMLElement):
+                y_cursor = self._layout_child(canvas, child, content_x, y_cursor, content_width, font, color)
+            elif render_text_children and isinstance(child, htmlm.HTMLTextNode):
                 y_cursor = self._layout_child(canvas, child, content_x, y_cursor, content_width, font, color)
 
         # Ensure empty blocks still take some space
         if y_cursor == content_y:
-            y_cursor += max(4, line_height // 2)
+            if tag == 'p':
+                y_cursor += line_height
+            else:
+                y_cursor += max(4, line_height // 2)
 
         # Compute element bottom including padding and margin
         content_height = y_cursor - content_y
         total_height = padding_top + content_height + padding_bottom
         element_bottom = y0 + total_height
 
-        # Draw background now that we know height
+        # Draw background now that we know height (send to back)
         if bg and bg != 'transparent':
-            canvas.create_rectangle(x0, y0, x0 + padding_left + content_width + padding_right, element_bottom, fill=bg, outline='')
+            rid = canvas.create_rectangle(x0, y0, x0 + padding_left + content_width + padding_right, element_bottom, fill=bg, outline='')
+            try:
+                canvas.tag_lower(rid)
+            except Exception:
+                pass
 
         # Draw outside marker after computing geometry so we know the y-position
         if marker_text and list_style_position == 'outside':
@@ -517,71 +602,131 @@ class PageRenderer:
             marker_y = content_y
             canvas.create_text(marker_x, marker_y, text=marker_text, anchor='nw', font=font, fill=color)
 
-        # Compute border
+        # Compute border (simple, resilient parsing)
         border = Border(element)
-        if styles.get("border"):
-            shorthand = "border"
-            shorthand_value = styles.get(shorthand)
-            reader = csv.reader(shorthand_value, delimeter=" ")
-                    
-            for property_ in ["width", "style", "color"]:
-                for border_part_name in ["top", "right", "bottom", "left"]:
-                    styles.update({
-                        f"border-{border_part_name}-{property}"
-                    })
+        try:
+            if styles.get("border"):
+                shorthand_value = str(styles.get("border", "")).strip()
+                parts = shorthand_value.split()
+                bw = parts[0] if len(parts) > 0 else None
+                bs = parts[1] if len(parts) > 1 else None
+                bc = parts[2] if len(parts) > 2 else None
+                for side in ("top", "right", "bottom", "left"):
+                    if bw: border.pieces[side].width = bw
+                    if bs: border.pieces[side].style = bs
+                    if bc: border.pieces[side].color = bc
 
-        
-        for border_part_name in ["top", "right", "bottom", "left"]:
-            shorthand = f"border-{border_part_name}"
-            if styles.get(shorthand):
-                shorthand_value = styles.get(shorthand)
-                reader = csv.reader(shorthand_value, delimeter=" ")
-                border.pieces[border_part_name].width = reader[0]
-                border.pieces[border_part_name].style = reader[1]
-                border.pieces[border_part_name].color = reader[3]
-            else:
-                if styles.get(shorthand+"-color"):
-                    border.pieces[border_part_name].color=styles.get(shorthand+"-color")
-
-                if styles.get(shorthand+"-style"):
-                    border.pieces[border_part_name].style=styles.get(shorthand+"-style")
-                
-                if styles.get(shorthand+"-width"):
-                    border.pieces[border_part_name].color=styles.get(shorthand+"-width")
+            for side in ("top", "right", "bottom", "left"):
+                shorthand = f"border-{side}"
+                if styles.get(shorthand):
+                    sv = str(styles.get(shorthand, "")).strip()
+                    parts = sv.split()
+                    bw = parts[0] if len(parts) > 0 else None
+                    bs = parts[1] if len(parts) > 1 else None
+                    bc = parts[2] if len(parts) > 2 else None
+                    if bw: border.pieces[side].width = bw
+                    if bs: border.pieces[side].style = bs
+                    if bc: border.pieces[side].color = bc
+                else:
+                    if styles.get(shorthand+"-color"):
+                        border.pieces[side].color = styles.get(shorthand+"-color")
+                    if styles.get(shorthand+"-style"):
+                        border.pieces[side].style = styles.get(shorthand+"-style")
+                    if styles.get(shorthand+"-width"):
+                        border.pieces[side].width = styles.get(shorthand+"-width")
+        except Exception:
+            pass
 
         
 
         return element_bottom + margin_bottom
 
-    def _layout_image(self, canvas, element, x, y):
-        imgdata=None
-        tag=element.tagName
-        if tag == 'img' and element.hasAttribute('src'):
-            # Render the image
-            url = element.getAttribute('src')
-            if element.hasAttribute('zlfdatab64'):
-                imgdata = base64.b64decode(element.getAttribute('zlfdata64'))   
+    def _layout_image(self, canvas, element, x, y, max_width=None):
+        try:
+            if getattr(element, 'tagName', '').lower() != 'img' or not element.hasAttribute('src'):
+                return y
+            src = element.getAttribute('src') or ''
+            data = b''
+            # data URL support
+            if src.startswith('data:image/'):
+                try:
+                    comma = src.find(',')
+                    if comma != -1:
+                        b64 = src[comma+1:]
+                        data = base64.b64decode(b64)
+                except Exception:
+                    data = b''
             else:
-                img_request = httpm.request(url)
-                imgdata = bytes(request['content'])
-                element.setAttribute('zlfdatab64', base64.b64encode(imgdata))
-            image_stream = io.BytesIO(imgdata)
-            pil_image = Image.open(image_stream)
+                try:
+                    resp = httpm.request(src)
+                    data = resp.get('content', b'')
+                except Exception:
+                    data = b''
+            # Decode image or fallback to alt text
+            try:
+                image_stream = io.BytesIO(data)
+                pil_image = Image.open(image_stream)
+                pil_image.load()
+            except Exception:
+                alt = element.getAttribute('alt') or '[image]'
+                font = self._get_font(size=16)
+                canvas.create_text(x, y, text=alt, anchor='nw', font=font, fill='#000000')
+                return y + font.metrics('linespace')
+            nat_w, nat_h = pil_image.size
+            styles = element.get_all_computed_styles() or {}
+            # Parse css width/height (px only)
+            css_w = styles.get('width')
+            css_h = styles.get('height')
+            tw = None
+            th = None
+            try:
+                tw = self._parse_px(str(css_w)) if css_w else None
+            except Exception:
+                tw = None
+            try:
+                th = self._parse_px(str(css_h)) if css_h else None
+            except Exception:
+                th = None
+            if tw and not th:
+                scale = max(0.01, float(tw) / float(nat_w))
+                th = int(nat_h * scale)
+            elif th and not tw:
+                scale = max(0.01, float(th) / float(nat_h))
+                tw = int(nat_w * scale)
+            elif not tw and not th:
+                # clamp to content width if provided
+                if max_width and nat_w > max_width:
+                    scale = float(max_width) / float(nat_w)
+                    tw = int(max_width)
+                    th = int(nat_h * scale)
+                else:
+                    tw, th = nat_w, nat_h
+            # ensure ints
+            tw = int(tw)
+            th = int(th)
+            if tw != nat_w or th != nat_h:
+                try:
+                    pil_image = pil_image.resize((tw, th), Image.LANCZOS)
+                except Exception:
+                    pil_image = pil_image.resize((tw, th))
             tk_image = ImageTk.PhotoImage(pil_image)
-            styles = element.get_all_computed_styles()
-            width = styles.get('width', pil_image.size[0])
-            height = styles.get('height', pil_image.size[1])
-            canvas.create_image(width, height)
-            return y+height
-        return y
+            self._image_cache.append(tk_image)
+            canvas.create_image(x, y, image=tk_image, anchor='nw')
+            return y + th
+        except Exception:
+            # final fallback: do nothing but keep layout moving a bit
+            return y + 4
 
     def _layout_child(self, canvas, node, x, y, width, parent_font, parent_color):
         if isinstance(node, htmlm.HTMLTextNode):
-            if node.text.strip():
-                canvas.create_text(x, y, text=node.text.strip(), anchor='nw', font=parent_font, fill=parent_color)
+            txt = self._collapse_ws(node.text)
+            if txt:
+                canvas.create_text(x, y, text=txt, anchor='nw', font=parent_font, fill=parent_color)
                 return y + parent_font.metrics('linespace')
             return y
         elif isinstance(node, htmlm.HTMLElement):
+            if getattr(node, 'tagName', '').lower() == 'img':
+                return self._layout_image(canvas, node, x, y, max_width=width)
             return self._layout_block(canvas, node, x, y, width)
         return y
 

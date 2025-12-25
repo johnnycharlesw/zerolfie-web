@@ -91,6 +91,23 @@ class HTMLElement:
             inline_styles = self._parse_inline_styles(inline_style)
             # Inline styles have highest specificity
             styles.update(inline_styles)
+
+        # Basic inheritance for common inheritable properties
+        inheritable_props = (
+            'color', 'font-family', 'font-size', 'font-weight', 'line-height',
+            'list-style-type', 'list-style-position', 'text-align', 'white-space'
+        )
+        parent_styles = {}
+        if isinstance(self.parent, HTMLElement):
+            try:
+                parent_styles = self.parent.get_all_computed_styles() or {}
+            except Exception:
+                parent_styles = {}
+        for prop in inheritable_props:
+            val = styles.get(prop)
+            if val is None or str(val).strip().lower() in ('inherit', 'initial', 'unset', 'revert'):
+                if prop in parent_styles:
+                    styles[prop] = parent_styles[prop]
             
         self._computed_styles = styles
     
