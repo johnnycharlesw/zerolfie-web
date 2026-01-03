@@ -51,7 +51,8 @@ def _request(url: str, method: str, connection_id: int):
         return None
 
     headers = {
-        "User-Agent": ua
+        "User-Agent": ua,
+        "Accept-Encoding": "gzip, deflate, br, identity"
     }
     # Extract path from URL for the request (fragments must NOT be sent)
     parsed_url = urlparse(url)
