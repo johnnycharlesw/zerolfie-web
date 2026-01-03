@@ -3,6 +3,8 @@ import os_getter
 from urllib.parse import urlparse, unquote
 import dnsm
 import sslm
+import compression
+import aboutpages
 from typing import Optional, Tuple, List
 
 ua = os_getter.gen_user_agent()
@@ -65,25 +67,19 @@ def _request(url: str, method: str, connection_id: int):
         headers.update({
             header[0]: header[1]
         })
+    content = response.read()
+    encoding=headers.get("Content-Encoding", "identity")
+    content=compression.decompress(content,encoding)
     response_dict = {
         "status": response.status,
         "reason": response.reason,
         "headers": headers,
-        "content": response.read()
+        "content": content
     }
     return response_dict
 
 
-def _parse_about_key(url: str) -> str:
-    # Accept forms like 'about:mozilla' or full URLs parsed earlier
-    if url.startswith("about:"):
-        return url.split(":", 1)[1]
-    parsed = urlparse(url)
-    # Some about URIs might put the key in path
-    key = parsed.path.lstrip("/")
-    if not key:
-        key = parsed.netloc
-    return key
+
 
 def _parse_res_key(url: str) -> str:
     # Accept forms like 'about:mozilla' or full URLs parsed earlier
@@ -120,49 +116,6 @@ def _guess_mime_type(path: str) -> str:
     return 'application/octet-stream'
 
 
-def _about_url_request(url: str, method: str):
-    key = _parse_about_key(url)
-    # Special-case about:blank -> serve html/blank.html
-    if key in ("blank", ""):
-        file_path = "html/blank.html"
-        try:
-            with open(file_path, "rb") as fd:
-                content = fd.read()
-            return {
-                "status": 200,
-                "reason": "OK",
-                "headers": [("ZerolfieWeb-Internal-WebPage", "True"), ("Content-Type", _guess_mime_type(file_path))],
-                "content": content
-            }
-        except FileNotFoundError:
-            # Fallback to truly empty if the file is missing
-            return {
-                "status": 200,
-                "reason": "OK",
-                "headers": [("ZerolfieWeb-Internal-WebPage", "True"), ("Content-Type", "text/html; charset=utf-8")],
-                "content": b""
-            }
-    file_path = f"html/{key}.html"
-    try:
-        with open(file_path, "rb") as fd:
-            content = fd.read()
-            return {
-                "status": 200,
-                "reason": "OK",
-                "headers": [("ZerolfieWeb-Internal-WebPage", "True"), ("Content-Type", _guess_mime_type(file_path))],
-                "content": content
-            }
-    except FileNotFoundError:
-        not_found = (
-            b"<h1>404 Not Found</h1>\n"
-            b"<p>The about: URL you requested could not be found.</p>\n"
-        )
-        return {
-            "status": 404,
-            "reason": "Not Found",
-            "headers": [("ZerolfieWeb-Internal-WebPage", "True"), ("Content-Type", "text/html; charset=utf-8")],
-            "content": not_found
-        }
 
 def _res_url_request(url: str, method: str):
     key = _parse_res_key(url)
@@ -173,7 +126,10 @@ def _res_url_request(url: str, method: str):
             return {
                 "status": 200,
                 "reason": "OK",
-                "headers": [("ZerolfieWeb-Internal-WebPage", "True"), ("Content-Type", _guess_mime_type(file_path))],
+                "headers": {
+                    "ZerolfiWeb-Internal-WebPage": "True",
+                    "Content-Type": _guess_mime_type(file_path)
+                },
                 "content": content
             }
     except FileNotFoundError:
@@ -184,8 +140,10 @@ def _res_url_request(url: str, method: str):
         return {
             "status": 404,
             "reason": "Not Found",
-            "headers": [("ZerolfieWeb-Internal-WebPage", "True"), ("Content-Type", "text/html; charset=utf-8")],
-            "content": not_found
+            "headers": {
+                    "ZerolfiWeb-Internal-WebPage": "True",
+                    "Content-Type": "text/html; charset=utf-8"
+                },
         }
 
 
@@ -244,7 +202,7 @@ def request(url: str = "http://localhost/index.php/Main_Page", port: Optional[in
 
     # Handle about: URLs immediately
     if url_parsed.scheme == "about" or url.startswith("about:"):
-        resp = _about_url_request(url=url, method=method)
+        resp = aboutpages._about_url_request(url=url, method=method)
         _last_url = url
         return resp
 
