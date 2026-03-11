@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "npm": "^11.7.0",
+    "npm": "^11.11.1",
     "sass": "^1.94.0",
     "typescript": "^5.9.3"
   }
